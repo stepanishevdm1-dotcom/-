@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Live Stabilizer</title>
+    <title>Video Stabilizer</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            font-family: 'Segoe UI', sans-serif;
             background: #000;
-            color: white;
-            touch-action: none;
+            font-family: 'Segoe UI', sans-serif;
         }
         
         #videoCanvas {
@@ -22,7 +20,70 @@
             height: 100%;
             object-fit: cover;
             z-index: 1;
-            background: #000;
+        }
+        
+        #debugInfo {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            border: 1px solid #0f03;
+        }
+        
+        .controls-panel {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            z-index: 30;
+            background: rgba(20, 20, 30, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+            min-width: 250px;
+        }
+        
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-label {
+            color: #fff;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        input[type=range] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #2a6a8a, #8ac4ff);
+            border-radius: 10px;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            border: 2px solid #4a90e2;
+            cursor: pointer;
+        }
+        
+        .value-badge {
+            color: #8ac4ff;
+            font-weight: 600;
         }
         
         #permission-overlay {
@@ -46,97 +107,12 @@
             background: #4a90e2;
             color: white;
             border: none;
-            padding: 15px 30px;
+            padding: 15px 40px;
             font-size: 1.2rem;
             border-radius: 50px;
-            margin: 10px;
+            margin: 20px;
             cursor: pointer;
             font-weight: 600;
-            width: 250px;
-        }
-        
-        .permission-btn.secondary {
-            background: #333;
-        }
-        
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 20;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            pointer-events: none;
-        }
-        
-        #debugInfo {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-family: monospace;
-            font-size: 0.8rem;
-            color: #8ae;
-            z-index: 20;
-            pointer-events: none;
-        }
-        
-        .controls-panel {
-            position: absolute;
-            bottom: 30px;
-            left: 20px;
-            right: 20px;
-            z-index: 30;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            background: rgba(20, 20, 30, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.15);
-            max-width: 400px;
-            margin: 0 auto;
-            pointer-events: all;
-        }
-        
-        .control-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        input[type=range] {
-            flex: 1;
-            height: 6px;
-            -webkit-appearance: none;
-            background: linear-gradient(90deg, #4a6a8a, #aaddff);
-            border-radius: 10px;
-            margin: 0 10px;
-        }
-        
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            background: white;
-            border-radius: 50%;
-            border: 2px solid #4a90e2;
-            cursor: pointer;
-        }
-        
-        .value-display {
-            min-width: 45px;
-            text-align: center;
-            background: #1e2a36;
-            padding: 5px 8px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            color: #aaddff;
         }
     </style>
 </head>
@@ -144,42 +120,36 @@
     <canvas id="videoCanvas"></canvas>
     
     <div id="permission-overlay">
-        <h2 style="color: white; margin-bottom: 30px;">🎥 Стабилизатор изображения</h2>
-        <p style="color: #ccc; margin-bottom: 30px;">Нужен доступ к камере и гироскопу</p>
+        <h2 style="color: white; margin-bottom: 20px;">🎥 Стабилизатор видео</h2>
+        <p style="color: #ccc; margin-bottom: 30px;">Нужен доступ к камере</p>
         <button class="permission-btn" id="requestCameraBtn">📷 Включить камеру</button>
-        <button class="permission-btn secondary" id="requestGyroBtn">🧭 Включить гироскоп</button>
-        <p style="color: #888; margin-top: 30px; font-size: 0.8rem;">
-            На iPhone нужно разрешить доступ
-        </p>
-    </div>
-
-    <div id="info">
-        🎥 Стабилизатор • Широкоугольная камера
     </div>
 
     <div id="debugInfo">
-        ⏳ Ожидание...
+        ⏳ Анализ видео...
     </div>
 
     <div class="controls-panel">
         <div class="control-row">
-            <span>⚡ Мощность стабилизации</span>
-            <div style="display: flex; align-items: center; flex: 1;">
-                <input type="range" id="stabStrength" min="0.5" max="3" step="0.1" value="2.0">
-                <span id="strengthValue" class="value-display">2.0x</span>
+            <div class="control-label">
+                <span>🔍 Приближение (зум)</span>
+                <span id="zoomValue" class="value-badge">2.0x</span>
             </div>
+            <input type="range" id="zoomSlider" min="1.2" max="3.0" step="0.1" value="2.0">
+        </div>
+        <div class="control-label" style="margin-top: 10px; color: #aaa; font-size: 0.8rem;">
+            ⚡ Стабилизация: сглаживание движений
         </div>
     </div>
 
     <script>
         (function() {
-            // Элементы
             const canvas = document.getElementById('videoCanvas');
             const ctx = canvas.getContext('2d');
             const debugDiv = document.getElementById('debugInfo');
             const overlay = document.getElementById('permission-overlay');
             
-            // Видео
+            // Видео элемент
             const video = document.createElement('video');
             video.autoplay = true;
             video.playsInline = true;
@@ -187,25 +157,23 @@
             
             // Состояние
             let videoStream = null;
-            let videoTrack = null;
             let cameraActive = false;
-            let gyroActive = false;
-            let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             
-            // Данные гироскопа
-            let alpha = 0, beta = 0, gamma = 0;
-            let prevAlpha = 0, prevBeta = 0, prevGamma = 0;
+            // Параметры стабилизации
+            let zoom = 2.0; // приближение по умолчанию
             
-            // Настройки
-            let stabilStrength = 2.0;
+            // Для стабилизации (сглаживание движений)
+            let prevFrameData = null;
+            let offsetX = 0;
+            let offsetY = 0;
+            let targetOffsetX = 0;
+            let targetOffsetY = 0;
             
             // Размеры
-            let videoWidth = 1920, videoHeight = 1080;
+            let videoWidth = 1280;
+            let videoHeight = 720;
             
-            // Сглаживание (фильтр низких частот)
-            const smoothing = 0.85; // 0 = нет сглаживания, 1 = очень плавно
-            
-            // Функция обновления размера canvas
+            // Размер canvas
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
@@ -214,12 +182,12 @@
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
             
-            // === ЗАПРОС КАМЕРЫ ===
+            // Запрос камеры
             async function requestCamera() {
                 try {
                     const constraints = {
                         video: {
-                            facingMode: { exact: 'environment' },
+                            facingMode: 'environment',
                             width: { ideal: 1920 },
                             height: { ideal: 1080 }
                         },
@@ -227,186 +195,173 @@
                     };
                     
                     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    videoTrack = videoStream.getVideoTracks()[0];
-                    
-                    console.log('Камера:', videoTrack.label);
-                    
-                    // Пытаемся установить широкий угол
-                    trySetWideAngle();
-                    
                     video.srcObject = videoStream;
                     
                     await new Promise((resolve) => {
                         video.onplaying = () => {
                             videoWidth = video.videoWidth;
                             videoHeight = video.videoHeight;
+                            console.log('Видео размер:', videoWidth, videoHeight);
                             resolve();
                         };
                         video.play();
                     });
                     
                     cameraActive = true;
-                    checkAllPermissions();
+                    overlay.style.display = 'none';
+                    
+                    // Запускаем стабилизацию
+                    requestAnimationFrame(stabilizeFrame);
                     
                 } catch (err) {
                     console.error('Ошибка камеры:', err);
-                    alert('Ошибка доступа к камере');
+                    alert('Не удалось получить доступ к камере');
                 }
             }
             
-            // Широкий угол
-            async function trySetWideAngle() {
-                if (!videoTrack) return;
-                
-                try {
-                    const capabilities = videoTrack.getCapabilities?.();
-                    if (capabilities?.zoom) {
-                        await videoTrack.applyConstraints({
-                            advanced: [{ zoom: capabilities.zoom.min || 0.5 }]
-                        });
-                        console.log('Зум установлен на минимум');
-                    }
-                } catch (e) {
-                    console.warn('Не удалось настроить зум');
-                }
-            }
-            
-            // === ЗАПРОС ГИРОСКОПА ===
-            function requestGyro() {
-                if (isIOS && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission()
-                        .then(permissionState => {
-                            if (permissionState === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation);
-                                gyroActive = true;
-                                checkAllPermissions();
-                            }
-                        })
-                        .catch(console.error);
-                } else {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                    gyroActive = true;
-                    checkAllPermissions();
-                }
-            }
-            
-            // Обработка гироскопа с сглаживанием
-            function handleOrientation(event) {
-                // Получаем новые значения
-                const newAlpha = event.alpha || 0;
-                const newBeta = event.beta || 0;
-                const newGamma = event.gamma || 0;
-                
-                // Применяем сглаживание (низкочастотный фильтр)
-                alpha = alpha * smoothing + newAlpha * (1 - smoothing);
-                beta = beta * smoothing + newBeta * (1 - smoothing);
-                gamma = gamma * smoothing + newGamma * (1 - smoothing);
-                
-                updateDebug();
-            }
-            
-            // Проверка разрешений
-            function checkAllPermissions() {
-                if (cameraActive && gyroActive) {
-                    overlay.style.display = 'none';
-                    renderFrame();
-                }
-            }
-            
-            // === СТАБИЛИЗАЦИЯ ===
-            function computeTransform() {
-                if (!cameraActive) {
-                    return { dx: 0, dy: 0, rotate: 0, scale: 2.0 };
-                }
-                
-                // Инвертируем направление для компенсации
-                // Чем больше stabilStrength, тем сильнее компенсация
-                const correctionAlpha = -alpha * stabilStrength * 0.5;
-                const correctionBeta = -beta * stabilStrength * 0.7;
-                const correctionGamma = -gamma * stabilStrength * 0.8;
-                
-                // Конвертируем градусы в пиксели
-                const pxPerDegree = 15;
-                
-                let dx = correctionAlpha * pxPerDegree;
-                let dy = correctionBeta * pxPerDegree;
-                let rotate = correctionGamma;
-                
-                // Масштаб для заполнения экрана (чтобы не было черных краев)
-                // Чем сильнее стабилизация, тем больше зум
-                let scale = 1.8 + (stabilStrength * 0.3);
-                
-                return { dx, dy, rotate, scale };
-            }
-            
-            // Отрисовка
-            function renderFrame() {
+            // Функция стабилизации
+            function stabilizeFrame() {
                 if (!cameraActive || video.readyState < 2) {
-                    requestAnimationFrame(renderFrame);
+                    requestAnimationFrame(stabilizeFrame);
                     return;
                 }
                 
-                try {
-                    const { dx, dy, rotate, scale } = computeTransform();
+                // Создаем временный canvas для анализа текущего кадра
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Уменьшаем размер для анализа (для производительности)
+                const analyzeWidth = 80;
+                const analyzeHeight = 60;
+                
+                tempCanvas.width = analyzeWidth;
+                tempCanvas.height = analyzeHeight;
+                
+                // Рисуем текущий кадр уменьшенным
+                tempCtx.drawImage(video, 0, 0, analyzeWidth, analyzeHeight);
+                
+                // Получаем данные пикселей
+                const currentFrameData = tempCtx.getImageData(0, 0, analyzeWidth, analyzeHeight);
+                
+                // Если есть предыдущий кадр - сравниваем
+                if (prevFrameData) {
+                    // Ищем смещение между кадрами
+                    const offset = findOffset(prevFrameData, currentFrameData, analyzeWidth, analyzeHeight);
                     
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.save();
+                    // Плавно применяем смещение (сглаживание)
+                    targetOffsetX += offset.x * 0.5; // накапливаем смещение
+                    targetOffsetY += offset.y * 0.5;
                     
-                    // Центрируем
-                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    // Ограничиваем максимальное смещение
+                    targetOffsetX = Math.max(-30, Math.min(30, targetOffsetX));
+                    targetOffsetY = Math.max(-30, Math.min(30, targetOffsetY));
                     
-                    // Поворот
-                    ctx.rotate(rotate * Math.PI / 180);
+                    // Плавно двигаемся к целевому смещению
+                    offsetX += (targetOffsetX - offsetX) * 0.1;
+                    offsetY += (targetOffsetY - offsetY) * 0.1;
                     
-                    // Масштаб
-                    ctx.scale(scale, scale);
-                    
-                    // Смещение
-                    ctx.translate(dx, dy);
-                    
-                    // Рисуем видео
-                    const videoAspect = videoWidth / videoHeight;
-                    const canvasAspect = canvas.width / canvas.height;
-                    
-                    let drawWidth, drawHeight;
-                    if (videoAspect > canvasAspect) {
-                        drawHeight = canvas.height;
-                        drawWidth = drawHeight * videoAspect;
-                    } else {
-                        drawWidth = canvas.width;
-                        drawHeight = drawWidth / videoAspect;
-                    }
-                    
-                    ctx.drawImage(video, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
-                    ctx.restore();
-                    
-                } catch (e) {
-                    console.error('Ошибка рендера:', e);
+                    debugDiv.innerHTML = `📊 Стабилизация: ${Math.abs(offset.x).toFixed(1)}px | Зум: ${zoom.toFixed(1)}x`;
                 }
                 
-                requestAnimationFrame(renderFrame);
+                // Сохраняем текущий кадр для следующего сравнения
+                prevFrameData = currentFrameData;
+                
+                // Отрисовываем стабилизированное видео
+                renderStabilizedVideo();
+                
+                requestAnimationFrame(stabilizeFrame);
             }
             
-            // Обновление отладочной информации
-            function updateDebug() {
-                if (!gyroActive) return;
-                debugDiv.innerHTML = `α:${alpha.toFixed(0)}° β:${beta.toFixed(0)}° γ:${gamma.toFixed(0)}° | стаб:${stabilStrength.toFixed(1)}x`;
+            // Поиск смещения между двумя кадрами
+            function findOffset(frame1, frame2, width, height) {
+                let bestX = 0;
+                let bestY = 0;
+                let bestDiff = Infinity;
+                
+                // Ищем смещение в небольшом диапазоне (для скорости)
+                const searchRange = 8;
+                
+                for (let dy = -searchRange; dy <= searchRange; dy += 2) {
+                    for (let dx = -searchRange; dx <= searchRange; dx += 2) {
+                        let diff = 0;
+                        let pixelsCompared = 0;
+                        
+                        // Сравниваем пиксели со смещением
+                        for (let y = 4; y < height - 4; y++) {
+                            for (let x = 4; x < width - 4; x++) {
+                                const nx = x + dx;
+                                const ny = y + dy;
+                                
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    const i1 = (y * width + x) * 4;
+                                    const i2 = (ny * width + nx) * 4;
+                                    
+                                    // Разница по яркости (используем только зеленый канал для скорости)
+                                    const diff1 = Math.abs(frame1.data[i1] - frame2.data[i2]);
+                                    diff += diff1;
+                                    pixelsCompared++;
+                                }
+                            }
+                        }
+                        
+                        const avgDiff = diff / pixelsCompared;
+                        
+                        if (avgDiff < bestDiff) {
+                            bestDiff = avgDiff;
+                            bestX = dx;
+                            bestY = dy;
+                        }
+                    }
+                }
+                
+                return { x: bestX, y: bestY };
             }
             
-            // === UI ===
+            // Отрисовка стабилизированного видео
+            function renderStabilizedVideo() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                
+                // Центрируем
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                
+                // Применяем зум (приближение)
+                ctx.scale(zoom, zoom);
+                
+                // Применяем смещение для стабилизации (инвертируем, чтобы компенсировать движение)
+                ctx.translate(-offsetX * 2, -offsetY * 2);
+                
+                // Рисуем видео
+                const videoAspect = videoWidth / videoHeight;
+                const canvasAspect = canvas.width / canvas.height;
+                
+                let drawWidth, drawHeight;
+                if (videoAspect > canvasAspect) {
+                    drawHeight = canvas.height;
+                    drawWidth = drawHeight * videoAspect;
+                } else {
+                    drawWidth = canvas.width;
+                    drawHeight = drawWidth / videoAspect;
+                }
+                
+                ctx.drawImage(video, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+                ctx.restore();
+            }
+            
+            // UI обработчики
             document.getElementById('requestCameraBtn').addEventListener('click', requestCamera);
-            document.getElementById('requestGyroBtn').addEventListener('click', requestGyro);
             
-            const strengthSlider = document.getElementById('stabStrength');
-            strengthSlider.addEventListener('input', (e) => {
-                stabilStrength = parseFloat(e.target.value);
-                document.getElementById('strengthValue').textContent = stabilStrength.toFixed(1) + 'x';
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            
+            zoomSlider.addEventListener('input', (e) => {
+                zoom = parseFloat(e.target.value);
+                zoomValue.textContent = zoom.toFixed(1) + 'x';
             });
             
             // Для Android запускаем автоматически
-            if (!isIOS) {
+            if (!/iPad|iPhone|iPod/.test(navigator.userAgent)) {
                 requestCamera();
-                requestGyro();
             }
             
         })();
