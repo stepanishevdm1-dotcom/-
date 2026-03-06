@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Liquid Glass Interface</title>
+    <title>DeepSeek Liquid Glass - Рабочая версия</title>
     <style>
         * {
             margin: 0;
@@ -22,329 +22,164 @@
             position: relative;
         }
 
-        /* ЖИДКИЙ ФОН С НЕЙРОСЕТЯМИ */
-        .ai-background {
+        /* ЖИДКИЙ ФОН */
+        .liquid-bg {
             position: fixed;
             top: -50%;
             left: -50%;
             width: 200%;
             height: 200%;
             background: 
-                radial-gradient(circle at 20% 30%, #4f46e5, transparent 40%),
-                radial-gradient(circle at 80% 70%, #10b981, transparent 40%),
-                radial-gradient(circle at 40% 80%, #8b5cf6, transparent 40%),
-                radial-gradient(circle at 60% 20%, #ec4899, transparent 40%);
-            animation: aiFlow 25s infinite alternate;
-            filter: blur(50px);
-            opacity: 0.7;
+                radial-gradient(circle at 20% 30%, #4facfe, transparent 40%),
+                radial-gradient(circle at 80% 70%, #a855f7, transparent 40%),
+                radial-gradient(circle at 40% 80%, #ec4899, transparent 40%);
+            animation: liquidBg 20s infinite alternate;
+            filter: blur(60px);
+            opacity: 0.6;
         }
 
-        @keyframes aiFlow {
+        @keyframes liquidBg {
             0% { transform: rotate(0deg) scale(1); }
-            100% { transform: rotate(15deg) scale(1.4); }
+            100% { transform: rotate(15deg) scale(1.3); }
         }
 
-        /* НЕЙРО-ЧАСТИЦЫ */
-        .neural-particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .particle-ai {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(79, 172, 254, 0.6);
-            border-radius: 50%;
-            box-shadow: 0 0 20px #4facfe;
-            animation: neuralFloat 15s infinite linear;
-        }
-
-        @keyframes neuralFloat {
-            0% { transform: translateY(100vh) translateX(-100px); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100px) translateX(100vw); opacity: 0; }
-        }
-
-        /* ОСНОВНОЙ КОНТЕЙНЕР С ЖИДКИМ СТЕКЛОМ */
-        .glass-container {
-            position: relative;
-            width: 1400px;
-            max-width: 95vw;
-            height: 850px;
-            max-height: 90vh;
-            z-index: 20;
-            filter: url(#liquid-warp);
-        }
-
-        /* СВГ ФИЛЬТР ДЛЯ ЖИДКОСТИ */
+        <!-- ФИЛЬТР ДЛЯ ЖИДКОГО СТЕКЛА -->
         <svg style="position: absolute; width: 0; height: 0;">
-            <filter id="liquid-warp" x="-30%" y="-30%" width="160%" height="160%">
-                <feTurbulence baseFrequency="0.02 0.03" numOctaves="4" seed="42" result="turb"/>
-                <feDisplacementMap in="SourceGraphic" in2="turb" scale="12" xChannelSelector="R" yChannelSelector="G"/>
-                <feGaussianBlur stdDeviation="1.5" result="blur"/>
-                <feColorMatrix in="blur" mode="saturate" values="1.8"/>
-                <feBlend in="SourceGraphic" in2="blur" mode="soft-light"/>
+            <filter id="liquid-filter">
+                <feTurbulence baseFrequency="0.02 0.03" numOctaves="3" seed="2"/>
+                <feDisplacementMap in="SourceGraphic" scale="8" xChannelSelector="R" yChannelSelector="G"/>
+                <feGaussianBlur stdDeviation="1.5"/>
+                <feColorMatrix type="saturate" values="1.5"/>
             </filter>
         </svg>
 
-        <!-- ОСНОВНОЕ СТЕКЛЯННОЕ ОКНО -->
-        <div class="liquid-glass-window">
-            <!-- ЖИДКИЕ СЛОИ -->
-            <div class="fluid-layer-1"></div>
-            <div class="fluid-layer-2"></div>
-            
-            <!-- КАПЛИ НА СТЕКЛЕ -->
-            <div class="glass-drops">
-                <div class="drop-ai" style="--delay: 0s; --size: 250px; --top: 10%; --left: 5%;"></div>
-                <div class="drop-ai" style="--delay: 3s; --size: 300px; --top: 60%; --left: 80%;"></div>
-                <div class="drop-ai" style="--delay: 6s; --size: 200px; --top: 30%; --left: 40%;"></div>
-                <div class="drop-ai" style="--delay: 9s; --size: 350px; --top: 80%; --left: 20%;"></div>
-            </div>
-
-            <!-- ИНТЕРФЕЙС CHATGPT СТИЛЬ -->
-            <div class="ai-interface">
-                <!-- САЙДБАР С ЧАТАМИ -->
-                <div class="chats-sidebar">
-                    <div class="sidebar-header">
-                        <div class="ai-avatar">
-                            <span class="ai-icon">🧠</span>
-                        </div>
-                        <div class="ai-title">DeepSeek AI</div>
-                        <div class="status-dot"></div>
-                    </div>
-
-                    <div class="search-box-ai">
-                        <span>🔍</span>
-                        <input type="text" placeholder="Поиск диалогов...">
-                    </div>
-
-                    <div class="chats-list-ai">
-                        <div class="chat-item-ai active">
-                            <div class="chat-icon-ai" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">🤖</div>
-                            <div class="chat-info-ai">
-                                <div class="chat-name-ai">DeepSeek Assistant</div>
-                                <div class="chat-preview-ai">Как я могу помочь?</div>
+        <!-- ОСНОВНОЕ ОКНО -->
+        <div class="glass-container">
+            <div class="liquid-glass">
+                <!-- ЖИДКИЙ СЛОЙ -->
+                <div class="fluid-overlay"></div>
+                
+                <!-- ИНТЕРФЕЙС -->
+                <div class="interface">
+                    <!-- ЛЕВАЯ ПАНЕЛЬ -->
+                    <div class="sidebar">
+                        <div class="logo-section">
+                            <div class="logo">
+                                <span class="logo-icon">🧠</span>
+                                <span class="logo-text">DeepSeek</span>
                             </div>
-                            <div class="chat-time-ai">сейчас</div>
-                        </div>
-
-                        <div class="chat-item-ai">
-                            <div class="chat-icon-ai" style="background: linear-gradient(135deg, #f43f5e, #fb7185);">📝</div>
-                            <div class="chat-info-ai">
-                                <div class="chat-name-ai">Код на Python</div>
-                                <div class="chat-preview-ai">Напиши парсер...</div>
+                            <div class="status">
+                                <span class="dot"></span>
+                                <span>API Ready</span>
                             </div>
-                            <div class="chat-time-ai">2ч назад</div>
                         </div>
 
-                        <div class="chat-item-ai">
-                            <div class="chat-icon-ai" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">🌐</div>
-                            <div class="chat-info-ai">
-                                <div class="chat-name-ai">Переводчик</div>
-                                <div class="chat-preview-ai">Переведи текст...</div>
-                            </div>
-                            <div class="chat-time-ai">вчера</div>
+                        <div class="new-chat-btn" id="newChatBtn">
+                            <span>+</span>
+                            <span>Новый чат</span>
                         </div>
 
-                        <div class="chat-item-ai">
-                            <div class="chat-icon-ai" style="background: linear-gradient(135deg, #10b981, #34d399);">🎨</div>
-                            <div class="chat-info-ai">
-                                <div class="chat-name-ai">Дизайн UI</div>
-                                <div class="chat-preview-ai">Создай интерфейс...</div>
-                            </div>
-                            <div class="chat-time-ai">3д назад</div>
+                        <div class="chats-history" id="chatsHistory">
+                            <!-- Чаты будут добавляться сюда -->
                         </div>
-                    </div>
 
-                    <div class="sidebar-footer">
-                        <div class="user-profile">
+                        <div class="user-section">
                             <div class="user-avatar">👤</div>
-                            <div class="user-name">liquid.user</div>
-                        </div>
-                        <div class="settings-icon">⚙️</div>
-                    </div>
-                </div>
-
-                <!-- ОСНОВНАЯ ОБЛАСТЬ ЧАТА -->
-                <div class="chat-main-area">
-                    <div class="chat-header-ai">
-                        <div class="header-info">
-                            <h2>DeepSeek Assistant</h2>
-                            <span class="model-badge">v3 + liquid glass</span>
-                        </div>
-                        <div class="header-actions">
-                            <span class="action-icon">📋</span>
-                            <span class="action-icon">🔊</span>
-                            <span class="action-icon">⋮</span>
+                            <div class="user-info">
+                                <div class="user-name">Liquid User</div>
+                                <div class="user-plan">DeepSeek + Glass</div>
+                            </div>
+                            <div class="settings">⚙️</div>
                         </div>
                     </div>
 
-                    <div class="messages-container" id="messagesContainer">
-                        <div class="message-row ai-message">
-                            <div class="message-avatar">🤖</div>
-                            <div class="message-bubble ai-bubble">
-                                <div class="message-sender">DeepSeek</div>
-                                <div class="message-text">Привет! Я нейросеть DeepSeek с интерфейсом из жидкого стекла. Чем могу помочь?</div>
-                                <div class="message-time-ai">10:30</div>
-                            </div>
+                    <!-- ПРАВАЯ ПАНЕЛЬ - ЧАТ -->
+                    <div class="chat-area">
+                        <div class="chat-header" id="chatHeader">
+                            <div class="chat-title">DeepSeek Assistant</div>
+                            <div class="chat-model">Liquid Glass Edition</div>
                         </div>
 
-                        <div class="message-row user-message">
-                            <div class="message-avatar">👤</div>
-                            <div class="message-bubble user-bubble">
-                                <div class="message-text">Расскажи о своем интерфейсе</div>
-                                <div class="message-time-ai">10:31</div>
-                            </div>
+                        <div class="messages" id="messages">
+                            <!-- Сообщения будут здесь -->
                         </div>
 
-                        <div class="message-row ai-message">
-                            <div class="message-avatar">🤖</div>
-                            <div class="message-bubble ai-bubble">
-                                <div class="message-sender">DeepSeek</div>
-                                <div class="message-text">
-                                    Мой интерфейс выполнен в технике **liquid glass**:
-                                    <br>• Прозрачные слои с размытием
-                                    <br>• Жидкие искажения по краям
-                                    <br>• Плавающие капли на стекле
-                                    <br>• Неоновые акценты
-                                    <br>• Адаптивная анимация
-                                </div>
-                                <div class="message-time-ai">10:32</div>
+                        <div class="input-container">
+                            <div class="suggestions" id="suggestions">
+                                <span class="suggestion">Напиши код</span>
+                                <span class="suggestion">Переведи текст</span>
+                                <span class="suggestion">Объясни концепцию</span>
+                                <span class="suggestion">Создай дизайн</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="input-area-ai">
-                        <div class="input-wrapper">
-                            <span class="attach-icon">📎</span>
-                            <input type="text" class="message-input-ai" placeholder="Напишите сообщение DeepSeek..." id="messageInput">
-                            <span class="send-icon-ai" id="sendButton">📤</span>
-                        </div>
-                        <div class="ai-suggestions">
-                            <span class="suggestion">🔍 Напиши код</span>
-                            <span class="suggestion">📝 Переведи текст</span>
-                            <span class="suggestion">🎨 Создай дизайн</span>
-                            <span class="suggestion">📊 Анализ данных</span>
+                            <div class="input-wrapper">
+                                <textarea 
+                                    class="message-input" 
+                                    id="messageInput" 
+                                    placeholder="Спроси у DeepSeek..."
+                                    rows="1"
+                                ></textarea>
+                                <button class="send-btn" id="sendBtn">
+                                    <span>📤</span>
+                                </button>
+                            </div>
+                            <div class="api-status" id="apiStatus">
+                                ⚡ DeepSeek API активен
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- ЭФФЕКТ СВЕЧЕНИЯ -->
-            <div class="glow-effect-ai"></div>
         </div>
 
         <style>
-            /* ОСНОВНОЕ ОКНО */
-            .liquid-glass-window {
+            .glass-container {
                 position: relative;
+                width: 1400px;
+                max-width: 95vw;
+                height: 900px;
+                max-height: 95vh;
+                z-index: 10;
+                filter: url(#liquid-filter);
+            }
+
+            .liquid-glass {
                 width: 100%;
                 height: 100%;
-                background: rgba(10, 15, 25, 0.2);
-                backdrop-filter: blur(30px) brightness(1.3);
-                -webkit-backdrop-filter: blur(30px) brightness(1.3);
+                background: rgba(10, 15, 25, 0.15);
+                backdrop-filter: blur(35px) brightness(1.4);
+                -webkit-backdrop-filter: blur(35px) brightness(1.4);
                 border-radius: 60px;
                 border: 2px solid rgba(255, 255, 255, 0.15);
                 box-shadow: 
-                    0 40px 80px rgba(0, 0, 0, 0.5),
-                    inset 0 0 100px rgba(79, 172, 254, 0.3);
+                    0 30px 60px rgba(0, 0, 0, 0.6),
+                    inset 0 0 80px rgba(79, 172, 254, 0.3);
                 overflow: hidden;
-                transform-style: preserve-3d;
-                animation: glassFloat 12s infinite ease-in-out;
+                position: relative;
             }
 
-            @keyframes glassFloat {
-                0%, 100% { transform: rotate(0deg) translateY(0); }
-                25% { transform: rotate(0.8deg) translateY(-10px); }
-                75% { transform: rotate(-0.8deg) translateY(10px); }
-            }
-
-            /* ЖИДКИЕ СЛОИ */
-            .fluid-layer-1, .fluid-layer-2 {
+            .fluid-overlay {
                 position: absolute;
                 top: -20%;
                 left: -20%;
                 width: 140%;
                 height: 140%;
+                background: radial-gradient(circle at 40% 50%, 
+                    rgba(79, 172, 254, 0.15) 0%, 
+                    rgba(168, 85, 247, 0.1) 50%,
+                    transparent 80%);
+                animation: fluid 15s infinite alternate;
                 pointer-events: none;
                 z-index: 5;
-                mix-blend-mode: overlay;
             }
 
-            .fluid-layer-1 {
-                background: radial-gradient(circle at 30% 40%, 
-                    rgba(79, 172, 254, 0.2) 0%, 
-                    rgba(139, 92, 246, 0.2) 40%,
-                    transparent 70%);
-                animation: fluidMove1 18s infinite alternate;
-                filter: blur(20px);
-            }
-
-            .fluid-layer-2 {
-                background: radial-gradient(circle at 70% 60%, 
-                    rgba(16, 185, 129, 0.15) 0%, 
-                    rgba(236, 72, 153, 0.15) 40%,
-                    transparent 70%);
-                animation: fluidMove2 22s infinite alternate-reverse;
-                filter: blur(30px);
-            }
-
-            @keyframes fluidMove1 {
+            @keyframes fluid {
                 0% { transform: translate(0, 0) scale(1); }
-                100% { transform: translate(-5%, -5%) scale(1.1); }
+                100% { transform: translate(-3%, -3%) scale(1.05); }
             }
 
-            @keyframes fluidMove2 {
-                0% { transform: translate(0, 0) scale(1); }
-                100% { transform: translate(5%, 5%) scale(1.15); }
-            }
-
-            /* КАПЛИ НА СТЕКЛЕ */
-            .glass-drops {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 10;
-                overflow: hidden;
-            }
-
-            .drop-ai {
-                position: absolute;
-                width: var(--size);
-                height: var(--size);
-                top: var(--top);
-                left: var(--left);
-                background: radial-gradient(circle at 30% 30%, 
-                    rgba(255, 255, 255, 0.3) 0%, 
-                    rgba(79, 172, 254, 0.2) 50%,
-                    transparent 80%);
-                border-radius: 50% 40% 60% 30% / 40% 60% 30% 50%;
-                filter: blur(15px);
-                transform: rotateX(30deg) rotateY(20deg);
-                animation: dropFlow 14s infinite alternate;
-                animation-delay: var(--delay);
-            }
-
-            @keyframes dropFlow {
-                0% { transform: rotateX(30deg) rotateY(20deg) scale(1); }
-                50% { transform: rotateX(40deg) rotateY(30deg) scale(1.1) translate(10px, -10px); }
-                100% { transform: rotateX(20deg) rotateY(10deg) scale(0.9) translate(-10px, 10px); }
-            }
-
-            /* ИНТЕРФЕЙС */
-            .ai-interface {
+            .interface {
                 position: relative;
-                z-index: 30;
+                z-index: 20;
                 display: flex;
                 width: 100%;
                 height: 100%;
@@ -352,71 +187,83 @@
             }
 
             /* САЙДБАР */
-            .chats-sidebar {
-                width: 300px;
+            .sidebar {
+                width: 280px;
                 background: rgba(255, 255, 255, 0.03);
-                backdrop-filter: blur(15px);
+                backdrop-filter: blur(20px);
                 border-right: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 25px 15px;
                 display: flex;
                 flex-direction: column;
-                padding: 20px 15px;
-                gap: 20px;
+                gap: 25px;
             }
 
-            .sidebar-header {
+            .logo-section {
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 5px;
+                justify-content: space-between;
+                padding: 0 10px;
             }
 
-            .ai-avatar {
-                width: 45px;
-                height: 45px;
-                background: linear-gradient(135deg, #4facfe, #00f2fe);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-                box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
-            }
-
-            .ai-title {
-                font-size: 18px;
-                font-weight: 600;
-                flex: 1;
-            }
-
-            .status-dot {
-                width: 10px;
-                height: 10px;
-                background: #10b981;
-                border-radius: 50%;
-                box-shadow: 0 0 20px #10b981;
-                animation: pulse 2s infinite;
-            }
-
-            .search-box-ai {
+            .logo {
                 display: flex;
                 align-items: center;
                 gap: 10px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .logo-icon {
+                font-size: 28px;
+                filter: drop-shadow(0 0 15px #4facfe);
+            }
+
+            .logo-text {
+                font-size: 18px;
+                font-weight: 600;
+                background: linear-gradient(135deg, #fff, #a78bfa);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .status {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                color: #10b981;
+                background: rgba(16, 185, 129, 0.15);
+                padding: 5px 10px;
+                border-radius: 30px;
+            }
+
+            .dot {
+                width: 8px;
+                height: 8px;
+                background: #10b981;
+                border-radius: 50%;
+                animation: pulse 2s infinite;
+            }
+
+            .new-chat-btn {
+                background: rgba(79, 172, 254, 0.2);
+                border: 1px solid rgba(79, 172, 254, 0.4);
                 border-radius: 40px;
-                padding: 12px 18px;
+                padding: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: all 0.3s;
             }
 
-            .search-box-ai input {
-                background: transparent;
-                border: none;
-                color: white;
-                font-size: 14px;
-                width: 100%;
-                outline: none;
+            .new-chat-btn:hover {
+                background: rgba(79, 172, 254, 0.3);
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(79, 172, 254, 0.3);
             }
 
-            .chats-list-ai {
+            .chats-history {
                 flex: 1;
                 overflow-y: auto;
                 display: flex;
@@ -424,79 +271,33 @@
                 gap: 8px;
             }
 
-            .chat-item-ai {
+            .chat-item {
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                padding: 12px;
-                border-radius: 30px;
+                padding: 12px 15px;
                 background: rgba(255, 255, 255, 0.02);
                 border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 30px;
                 cursor: pointer;
                 transition: all 0.3s;
             }
 
-            .chat-item-ai:hover {
+            .chat-item:hover {
                 background: rgba(79, 172, 254, 0.15);
                 transform: translateX(5px);
                 border-color: rgba(79, 172, 254, 0.3);
             }
 
-            .chat-item-ai.active {
+            .chat-item.active {
                 background: rgba(79, 172, 254, 0.2);
                 border-color: rgba(79, 172, 254, 0.5);
             }
 
-            .chat-icon-ai {
-                width: 45px;
-                height: 45px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 22px;
-                flex-shrink: 0;
-            }
-
-            .chat-info-ai {
-                flex: 1;
-            }
-
-            .chat-name-ai {
-                font-weight: 600;
-                margin-bottom: 4px;
-                font-size: 14px;
-            }
-
-            .chat-preview-ai {
-                font-size: 12px;
-                color: rgba(255, 255, 255, 0.6);
-            }
-
-            .chat-time-ai {
-                font-size: 10px;
-                color: rgba(255, 255, 255, 0.4);
-            }
-
-            .sidebar-footer {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px;
-                background: rgba(255, 255, 255, 0.05);
-                border-radius: 40px;
-            }
-
-            .user-profile {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .user-avatar {
+            .chat-icon {
                 width: 35px;
                 height: 35px;
-                background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+                background: linear-gradient(135deg, #4facfe, #a855f7);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -504,65 +305,97 @@
                 font-size: 18px;
             }
 
-            .user-name {
-                font-size: 14px;
-                color: rgba(255, 255, 255, 0.9);
-            }
-
-            /* ОСНОВНАЯ ОБЛАСТЬ */
-            .chat-main-area {
+            .chat-item-info {
                 flex: 1;
-                display: flex;
-                flex-direction: column;
-                padding: 20px;
             }
 
-            .chat-header-ai {
+            .chat-item-title {
+                font-size: 14px;
+                font-weight: 500;
+                margin-bottom: 3px;
+            }
+
+            .chat-item-preview {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.5);
+            }
+
+            .user-section {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
-                padding-bottom: 20px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-
-            .header-info h2 {
-                font-size: 22px;
-                margin-bottom: 5px;
-            }
-
-            .model-badge {
-                font-size: 12px;
-                background: rgba(79, 172, 254, 0.2);
-                padding: 4px 10px;
-                border-radius: 30px;
-                border: 1px solid rgba(79, 172, 254, 0.3);
-            }
-
-            .header-actions {
-                display: flex;
-                gap: 15px;
-            }
-
-            .action-icon {
-                width: 40px;
-                height: 40px;
+                gap: 10px;
+                padding: 15px;
                 background: rgba(255, 255, 255, 0.05);
+                border-radius: 40px;
+            }
+
+            .user-avatar {
+                width: 45px;
+                height: 45px;
+                background: linear-gradient(135deg, #f43f5e, #fb7185);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+            }
+
+            .user-info {
+                flex: 1;
+            }
+
+            .user-name {
+                font-weight: 600;
+                font-size: 14px;
+                margin-bottom: 3px;
+            }
+
+            .user-plan {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.6);
+            }
+
+            .settings {
+                width: 35px;
+                height: 35px;
+                background: rgba(255, 255, 255, 0.1);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                transition: all 0.3s;
                 font-size: 18px;
             }
 
-            .action-icon:hover {
-                background: rgba(79, 172, 254, 0.2);
-                transform: translateY(-2px);
+            /* ОБЛАСТЬ ЧАТА */
+            .chat-area {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                padding: 25px;
             }
 
-            /* СООБЩЕНИЯ */
-            .messages-container {
+            .chat-header {
+                padding-bottom: 20px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .chat-title {
+                font-size: 24px;
+                font-weight: 600;
+                margin-bottom: 5px;
+            }
+
+            .chat-model {
+                font-size: 13px;
+                color: #4facfe;
+                background: rgba(79, 172, 254, 0.15);
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 30px;
+            }
+
+            .messages {
                 flex: 1;
                 overflow-y: auto;
                 padding: 20px 0;
@@ -571,21 +404,24 @@
                 gap: 20px;
             }
 
-            .message-row {
+            .message {
                 display: flex;
                 gap: 15px;
-                animation: messageAppear 0.5s ease-out;
+                animation: messageIn 0.3s ease-out;
             }
 
-            @keyframes messageAppear {
+            @keyframes messageIn {
                 from { opacity: 0; transform: translateY(20px); }
                 to { opacity: 1; transform: translateY(0); }
+            }
+
+            .message.user {
+                flex-direction: row-reverse;
             }
 
             .message-avatar {
                 width: 40px;
                 height: 40px;
-                background: rgba(255, 255, 255, 0.1);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -594,92 +430,56 @@
                 flex-shrink: 0;
             }
 
-            .message-bubble {
+            .message.user .message-avatar {
+                background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            }
+
+            .message.assistant .message-avatar {
+                background: linear-gradient(135deg, #4facfe, #00f2fe);
+            }
+
+            .message-content {
                 max-width: 70%;
                 padding: 15px 20px;
                 border-radius: 25px;
                 position: relative;
             }
 
-            .ai-bubble {
+            .message.user .message-content {
+                background: rgba(139, 92, 246, 0.15);
+                border: 1px solid rgba(139, 92, 246, 0.3);
+                border-bottom-right-radius: 5px;
+            }
+
+            .message.assistant .message-content {
                 background: rgba(79, 172, 254, 0.15);
                 border: 1px solid rgba(79, 172, 254, 0.3);
                 border-bottom-left-radius: 5px;
             }
 
-            .user-bubble {
-                background: rgba(139, 92, 246, 0.15);
-                border: 1px solid rgba(139, 92, 246, 0.3);
-                border-bottom-right-radius: 5px;
-                margin-left: auto;
-            }
-
-            .message-sender {
-                font-size: 12px;
-                color: rgba(255, 255, 255, 0.7);
-                margin-bottom: 5px;
-            }
-
             .message-text {
                 font-size: 15px;
-                line-height: 1.5;
+                line-height: 1.6;
+                white-space: pre-wrap;
             }
 
-            .message-time-ai {
+            .message-time {
                 font-size: 10px;
                 color: rgba(255, 255, 255, 0.4);
-                margin-top: 5px;
+                margin-top: 8px;
                 text-align: right;
             }
 
-            /* ОБЛАСТЬ ВВОДА */
-            .input-area-ai {
+            /* ИНПУТ */
+            .input-container {
                 padding-top: 20px;
                 border-top: 1px solid rgba(255, 255, 255, 0.1);
             }
 
-            .input-wrapper {
-                display: flex;
-                align-items: center;
-                gap: 15px;
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 50px;
-                padding: 10px 20px;
-            }
-
-            .attach-icon {
-                font-size: 22px;
-                color: rgba(255, 255, 255, 0.5);
-                cursor: pointer;
-            }
-
-            .message-input-ai {
-                flex: 1;
-                background: transparent;
-                border: none;
-                color: white;
-                font-size: 16px;
-                padding: 12px 0;
-                outline: none;
-            }
-
-            .send-icon-ai {
-                font-size: 24px;
-                color: #4facfe;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-
-            .send-icon-ai:hover {
-                transform: scale(1.1);
-                filter: drop-shadow(0 0 10px #4facfe);
-            }
-
-            .ai-suggestions {
+            .suggestions {
                 display: flex;
                 gap: 10px;
-                margin-top: 15px;
+                margin-bottom: 15px;
                 flex-wrap: wrap;
             }
 
@@ -700,38 +500,69 @@
                 transform: translateY(-2px);
             }
 
-            /* СВЕЧЕНИЕ */
-            .glow-effect-ai {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                border-radius: 60px;
-                box-shadow: 0 0 150px rgba(79, 172, 254, 0.4);
-                animation: glowPulse 4s infinite;
-                pointer-events: none;
-                z-index: 100;
+            .input-wrapper {
+                display: flex;
+                align-items: flex-end;
+                gap: 15px;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 40px;
+                padding: 15px 25px;
             }
 
-            @keyframes glowPulse {
-                0%, 100% { opacity: 0.3; }
-                50% { opacity: 0.7; }
+            .message-input {
+                flex: 1;
+                background: transparent;
+                border: none;
+                color: white;
+                font-size: 16px;
+                resize: none;
+                max-height: 200px;
+                outline: none;
+                font-family: inherit;
+            }
+
+            .send-btn {
+                width: 45px;
+                height: 45px;
+                background: linear-gradient(135deg, #4facfe, #00f2fe);
+                border: none;
+                border-radius: 50%;
+                color: white;
+                font-size: 20px;
+                cursor: pointer;
+                transition: all 0.3s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .send-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 0 30px #4facfe;
+            }
+
+            .api-status {
+                margin-top: 10px;
+                font-size: 12px;
+                color: #10b981;
+                text-align: center;
+                padding: 5px;
             }
 
             /* СКРОЛЛ */
-            .chats-list-ai::-webkit-scrollbar,
-            .messages-container::-webkit-scrollbar {
+            .messages::-webkit-scrollbar,
+            .chats-history::-webkit-scrollbar {
                 width: 4px;
             }
 
-            .chats-list-ai::-webkit-scrollbar-track,
-            .messages-container::-webkit-scrollbar-track {
+            .messages::-webkit-scrollbar-track,
+            .chats-history::-webkit-scrollbar-track {
                 background: rgba(255, 255, 255, 0.02);
             }
 
-            .chats-list-ai::-webkit-scrollbar-thumb,
-            .messages-container::-webkit-scrollbar-thumb {
+            .messages::-webkit-scrollbar-thumb,
+            .chats-history::-webkit-scrollbar-thumb {
                 background: rgba(255, 255, 255, 0.2);
                 border-radius: 4px;
             }
@@ -739,90 +570,251 @@
     </div>
 
     <script>
-        // ГЕНЕРАЦИЯ НЕЙРО-ЧАСТИЦ
-        function createNeuralParticles() {
-            const container = document.querySelector('.neural-particles');
-            for (let i = 0; i < 50; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle-ai';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
-                particle.style.animationDelay = Math.random() * 5 + 's';
-                particle.style.width = (Math.random() * 6 + 2) + 'px';
-                particle.style.height = particle.style.width;
-                container.appendChild(particle);
+        // DeepSeek API Configuration
+        const DEEPSEEK_API_KEY = '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'; // Ваш API ключ
+        const API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+        // Элементы интерфейса
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const chatsHistory = document.getElementById('chatsHistory');
+        const suggestions = document.querySelectorAll('.suggestion');
+        const apiStatus = document.getElementById('apiStatus');
+
+        // Состояние приложения
+        let currentChatId = Date.now();
+        let chats = JSON.parse(localStorage.getItem('deepseek_chats')) || [];
+        let messages = [];
+
+        // Инициализация
+        function init() {
+            loadChats();
+            addWelcomeMessage();
+            updateAPIStatus();
+        }
+
+        // Проверка API статуса
+        function updateAPIStatus() {
+            if (DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== 'YOUR_API_KEY_HERE') {
+                apiStatus.innerHTML = '✅ DeepSeek API подключен';
+                apiStatus.style.color = '#10b981';
+            } else {
+                apiStatus.innerHTML = '⚠️ Вставьте ваш API ключ DeepSeek';
+                apiStatus.style.color = '#f59e0b';
             }
         }
 
-        createNeuralParticles();
-
-        // ИМИТАЦИЯ ОТПРАВКИ СООБЩЕНИЙ
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const messagesContainer = document.getElementById('messagesContainer');
-
-        function addUserMessage(text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message-row user-message';
-            messageDiv.innerHTML = `
-                <div class="message-avatar">👤</div>
-                <div class="message-bubble user-bubble">
-                    <div class="message-text">${text}</div>
-                    <div class="message-time-ai">${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}</div>
-                </div>
-            `;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Загрузка чатов
+        function loadChats() {
+            chatsHistory.innerHTML = '';
+            chats.forEach(chat => {
+                addChatToHistory(chat);
+            });
         }
 
-        function addAiMessage(text) {
-            setTimeout(() => {
+        // Добавление чата в историю
+        function addChatToHistory(chat) {
+            const chatItem = document.createElement('div');
+            chatItem.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+            chatItem.innerHTML = `
+                <div class="chat-icon">💬</div>
+                <div class="chat-item-info">
+                    <div class="chat-item-title">${chat.title || 'Новый чат'}</div>
+                    <div class="chat-item-preview">${chat.preview || 'Начните разговор...'}</div>
+                </div>
+            `;
+            chatItem.onclick = () => switchChat(chat.id);
+            chatsHistory.appendChild(chatItem);
+        }
+
+        // Переключение чата
+        function switchChat(chatId) {
+            currentChatId = chatId;
+            const chat = chats.find(c => c.id === chatId);
+            if (chat) {
+                messages = chat.messages || [];
+                displayMessages();
+            }
+            loadChats();
+        }
+
+        // Приветственное сообщение
+        function addWelcomeMessage() {
+            if (messages.length === 0) {
+                addMessage('assistant', 'Привет! Я DeepSeek с интерфейсом из жидкого стекла. Задавай любые вопросы! 🌊');
+            }
+        }
+
+        // Добавление сообщения
+        function addMessage(role, content) {
+            messages.push({
+                role: role,
+                content: content,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            
+            displayMessages();
+            saveChat();
+        }
+
+        // Отображение сообщений
+        function displayMessages() {
+            messagesContainer.innerHTML = '';
+            messages.forEach(msg => {
                 const messageDiv = document.createElement('div');
-                messageDiv.className = 'message-row ai-message';
+                messageDiv.className = `message ${msg.role}`;
                 messageDiv.innerHTML = `
-                    <div class="message-avatar">🤖</div>
-                    <div class="message-bubble ai-bubble">
-                        <div class="message-sender">DeepSeek</div>
-                        <div class="message-text">${text}</div>
-                        <div class="message-time-ai">${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}</div>
+                    <div class="message-avatar">${msg.role === 'assistant' ? '🧠' : '👤'}</div>
+                    <div class="message-content">
+                        <div class="message-text">${msg.content.replace(/\n/g, '<br>')}</div>
+                        <div class="message-time">${msg.time}</div>
                     </div>
                 `;
                 messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        sendButton.addEventListener('click', () => {
-            const text = messageInput.value.trim();
-            if (text) {
-                addUserMessage(text);
-                messageInput.value = '';
-                addAiMessage("Я DeepSeek с жидким стеклянным интерфейсом! Получил ваше сообщение: \"" + text + "\". Чем еще могу помочь? 🌊");
+        // Сохранение чата
+        function saveChat() {
+            const chatIndex = chats.findIndex(c => c.id === currentChatId);
+            const preview = messages[messages.length - 1]?.content.substring(0, 30) + '...' || 'Новый чат';
+            const title = messages[0]?.content.substring(0, 20) || 'Новый чат';
+            
+            if (chatIndex >= 0) {
+                chats[chatIndex].messages = messages;
+                chats[chatIndex].preview = preview;
+                chats[chatIndex].title = title;
+            } else {
+                chats.push({
+                    id: currentChatId,
+                    title: title,
+                    preview: preview,
+                    messages: messages
+                });
             }
-        });
+            
+            localStorage.setItem('deepseek_chats', JSON.stringify(chats));
+            loadChats();
+        }
+
+        // Создание нового чата
+        function newChat() {
+            currentChatId = Date.now();
+            messages = [];
+            addWelcomeMessage();
+            loadChats();
+        }
+
+        // Отправка запроса к DeepSeek API
+        async function sendToDeepSeek(userMessage) {
+            if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'YOUR_API_KEY_HERE') {
+                addMessage('assistant', '⚠️ Пожалуйста, вставьте ваш API ключ DeepSeek в переменную DEEPSEEK_API_KEY');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            { role: 'system', content: 'Ты DeepSeek AI с интерфейсом из жидкого стекла. Отвечай кратко и по делу.' },
+                            ...messages.map(m => ({ role: m.role, content: m.content }))
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ошибка! статус: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                addMessage('assistant', aiResponse);
+
+            } catch (error) {
+                console.error('Ошибка API:', error);
+                addMessage('assistant', '❌ Ошибка подключения к DeepSeek API. Проверьте API ключ и попробуйте снова.');
+            }
+        }
+
+        // Обработка отправки сообщения
+        async function handleSend() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            await sendToDeepSeek(text);
+        }
+
+        // Event Listeners
+        sendBtn.addEventListener('click', handleSend);
 
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendButton.click();
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
             }
         });
 
-        // СУГГЕСТИИ
-        document.querySelectorAll('.suggestion').forEach(suggestion => {
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = messageInput.scrollHeight + 'px';
+        });
+
+        newChatBtn.addEventListener('click', newChat);
+
+        suggestions.forEach(suggestion => {
             suggestion.addEventListener('click', () => {
                 messageInput.value = suggestion.textContent;
-                sendButton.click();
+                messageInput.style.height = 'auto';
+                messageInput.style.height = messageInput.scrollHeight + 'px';
             });
         });
 
-        // ПАРАЛЛАКС ЭФФЕКТ
+        // Параллакс эффект
         document.addEventListener('mousemove', (e) => {
-            const glass = document.querySelector('.liquid-glass-window');
-            const x = (e.clientX / window.innerWidth - 0.5) * 20;
-            const y = (e.clientY / window.innerHeight - 0.5) * 20;
+            const glass = document.querySelector('.liquid-glass');
+            const x = (e.clientX / window.innerWidth - 0.5) * 15;
+            const y = (e.clientY / window.innerHeight - 0.5) * 15;
             
             glass.style.transform = `rotateY(${x}deg) rotateX(${-y}deg) translateZ(10px)`;
         });
+
+        // Инициализация приложения
+        init();
+
+        // Генерация жидких частиц
+        function createLiquidParticles() {
+            const overlay = document.querySelector('.fluid-overlay');
+            for (let i = 0; i < 5; i++) {
+                const drop = document.createElement('div');
+                drop.style.position = 'absolute';
+                drop.style.width = Math.random() * 200 + 100 + 'px';
+                drop.style.height = drop.style.width;
+                drop.style.background = 'radial-gradient(circle at 30% 30%, rgba(79,172,254,0.2), transparent 70%)';
+                drop.style.borderRadius = '50%';
+                drop.style.filter = 'blur(20px)';
+                drop.style.top = Math.random() * 100 + '%';
+                drop.style.left = Math.random() * 100 + '%';
+                drop.style.animation = `float ${Math.random() * 10 + 10}s infinite alternate`;
+                overlay.appendChild(drop);
+            }
+        }
+
+        createLiquidParticles();
     </script>
 </body>
 </html>
