@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram с жидким стеклом и искажениями</title>
+    <title>Telegram в ЖИДКОМ СТЕКЛЕ</title>
     <style>
         * {
             margin: 0;
@@ -22,118 +22,275 @@
             position: relative;
         }
 
-        /* Сумасшедший жидкий фон */
-        .liquid-background {
+        /* КРАСИВЫЙ ТЕКУЧИЙ ФОН */
+        .psychedelic-bg {
             position: fixed;
             top: -50%;
             left: -50%;
             width: 200%;
             height: 200%;
             background: 
-                radial-gradient(circle at 30% 50%, rgba(0, 200, 255, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 70% 80%, rgba(150, 0, 255, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 10% 20%, rgba(255, 100, 100, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 90% 30%, rgba(100, 255, 150, 0.2) 0%, transparent 50%),
-                repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 10px);
-            animation: liquidBackground 20s infinite alternate;
-            filter: blur(30px);
+                radial-gradient(circle at 20% 30%, #ff0066, transparent 40%),
+                radial-gradient(circle at 80% 70%, #00ffff, transparent 40%),
+                radial-gradient(circle at 40% 80%, #ffff00, transparent 40%),
+                radial-gradient(circle at 60% 20%, #ff00ff, transparent 40%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 20px, transparent 20px, transparent 40px);
+            animation: bgFlow 20s infinite alternate;
+            filter: blur(40px);
         }
 
-        @keyframes liquidBackground {
+        @keyframes bgFlow {
             0% { transform: rotate(0deg) scale(1); }
-            100% { transform: rotate(10deg) scale(1.2); }
+            100% { transform: rotate(20deg) scale(1.3); }
         }
 
-        /* Основной контейнер с эффектом искажения */
-        .distortion-container {
+        /* ГЛАВНЫЙ КОНТЕЙНЕР С УГРОБНЫМИ ИСКАЖЕНИЯМИ */
+        .warp-container {
             position: relative;
-            width: 400px;
-            height: 800px;
+            width: 380px;
+            height: 780px;
             z-index: 10;
-            filter: url(#liquid-distortion);
+            filter: url(#heavy-warp);
         }
 
-        /* SVG фильтр для жидкого искажения */
-        svg {
-            position: absolute;
-            width: 0;
-            height: 0;
-        }
+        /* СУМАСШЕДШИЙ SVG ФИЛЬТР */
+        <svg style="position: absolute; width: 0; height: 0;">
+            <filter id="heavy-warp" x="-50%" y="-50%" width="200%" height="200%">
+                <!-- ДИКИЙ ШУМ ДЛЯ ТЕКУЧЕСТИ -->
+                <feTurbulence baseFrequency="0.05 0.1" numOctaves="5" seed="666" result="turb"/>
+                <!-- СДВИГ ПИКСЕЛЕЙ КАК БЕШЕНЫЙ -->
+                <feDisplacementMap in="SourceGraphic" in2="turb" scale="25" xChannelSelector="R" yChannelSelector="G" result="warped"/>
+                <!-- РАЗМЫТИЕ ДЛЯ МЯГКОСТИ -->
+                <feGaussianBlur in="warped" stdDeviation="3" result="blurred"/>
+                <!-- ПОВЫШЕНИЕ КОНТРАСТА ДО УГРОБНОСТИ -->
+                <feColorMatrix in="blurred" mode="saturate" values="3" result="saturated"/>
+                <!-- СМЕШИВАНИЕ С ОРИГИНАЛОМ ДЛЯ СОХРАНЕНИЯ ДЕТАЛЕЙ -->
+                <feBlend in="SourceGraphic" in2="saturated" mode="screen"/>
+            </filter>
+        </svg>
 
-        /* Телефон с жидким стеклом */
+        <!-- ТЕЛЕФОН ИЗ ЖИДКОГО СТЕКЛА -->
+        <div class="liquid-phone">
+            <!-- ОСНОВНОЙ СЛОЙ ЖИДКОСТИ -->
+            <div class="fluid-layer"></div>
+            
+            <!-- ИСКАЖАЮЩИЕ КРАЯ -->
+            <div class="warp-edges"></div>
+            
+            <!-- БЕШЕНЫЕ КАПЛИ -->
+            <div class="crazy-drops">
+                <div class="crazy-drop" style="--delay: 0s; --size: 200px; --top: 10%; --left: 20%;"></div>
+                <div class="crazy-drop" style="--delay: 2s; --size: 250px; --top: 60%; --left: 70%;"></div>
+                <div class="crazy-drop" style="--delay: 4s; --size: 180px; --top: 30%; --left: 50%;"></div>
+                <div class="crazy-drop" style="--delay: 1s; --size: 300px; --top: 80%; --left: 10%;"></div>
+                <div class="crazy-drop" style="--delay: 3s; --size: 220px; --top: 40%; --left: 80%;"></div>
+                <div class="crazy-drop" style="--delay: 5s; --size: 280px; --top: 15%; --left: 60%;"></div>
+            </div>
+            
+            <!-- УЛЬТРАПРОЗРАЧНЫЙ ЭКРАН -->
+            <div class="ultra-glass">
+                <!-- СТАТУС БАР -->
+                <div class="status-bar-fancy">
+                    <span>📶 5G+</span>
+                    <span class="time-fancy" id="liveTime"></span>
+                    <span>🔋 100%</span>
+                </div>
+                
+                <!-- ПРОФИЛЬ -->
+                <div class="profile-fancy">
+                    <div class="avatar-liquid">
+                        <div class="avatar-inner">A</div>
+                    </div>
+                    <div class="profile-text">
+                        <div class="name-fancy">Алексей</div>
+                        <div class="status-fancy">🤙 был 5 минут назад</div>
+                    </div>
+                    <div class="menu-dots">⋮</div>
+                </div>
+                
+                <!-- ПОИСК -->
+                <div class="search-fancy">
+                    <span>🔍</span>
+                    <input type="text" placeholder="Поиск разговоров..." class="search-input-fancy">
+                </div>
+                
+                <!-- ЧАТЫ С ПРОЗРАЧНОСТЬЮ -->
+                <div class="chats-fancy">
+                    <div class="chat-item-fancy">
+                        <div class="chat-avatar-fancy" style="background: linear-gradient(135deg, #ff0066, #ff6600);">
+                            M
+                            <span class="online-liquid"></span>
+                        </div>
+                        <div class="chat-content-fancy">
+                            <div class="chat-header-fancy">
+                                <span class="chat-name-fancy">Михаил</span>
+                                <span class="chat-time-fancy">12:30</span>
+                            </div>
+                            <div class="chat-message-fancy">
+                                <span>Йоу, смотри че нашел! 🔥</span>
+                                <span class="badge-fancy">3</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-item-fancy">
+                        <div class="chat-avatar-fancy" style="background: linear-gradient(135deg, #0066ff, #00ffff);">
+                            А
+                        </div>
+                        <div class="chat-content-fancy">
+                            <div class="chat-header-fancy">
+                                <span class="chat-name-fancy">Анна</span>
+                                <span class="chat-time-fancy">11:15</span>
+                            </div>
+                            <div class="chat-message-fancy">
+                                <span>Фото 📸 (5 новых)</span>
+                                <span class="badge-fancy">5</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-item-fancy">
+                        <div class="chat-avatar-fancy" style="background: linear-gradient(135deg, #9900ff, #ff00ff);">
+                            Р
+                            <span class="online-liquid"></span>
+                        </div>
+                        <div class="chat-content-fancy">
+                            <div class="chat-header-fancy">
+                                <span class="chat-name-fancy">Рабочий чат</span>
+                                <span class="chat-time-fancy">10:45</span>
+                            </div>
+                            <div class="chat-message-fancy">
+                                <span>Дмитрий: Планерка в 15:00</span>
+                                <span class="badge-fancy">12</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-item-fancy">
+                        <div class="chat-avatar-fancy" style="background: linear-gradient(135deg, #00ff99, #00ccff);">
+                            С
+                        </div>
+                        <div class="chat-content-fancy">
+                            <div class="chat-header-fancy">
+                                <span class="chat-name-fancy">Семья</span>
+                                <span class="chat-time-fancy">09:20</span>
+                            </div>
+                            <div class="chat-message-fancy">
+                                <span>Мама: Ужин готов! 🍝</span>
+                                <span class="badge-fancy">2</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-item-fancy">
+                        <div class="chat-avatar-fancy" style="background: linear-gradient(135deg, #ff6600, #ffcc00);">
+                            Д
+                            <span class="online-liquid"></span>
+                        </div>
+                        <div class="chat-content-fancy">
+                            <div class="chat-header-fancy">
+                                <span class="chat-name-fancy">Димон</span>
+                                <span class="chat-time-fancy">Вчера</span>
+                            </div>
+                            <div class="chat-message-fancy">
+                                <span>Го в доту?</span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- НИЖНЕЕ МЕНЮ -->
+                <div class="nav-fancy">
+                    <div class="nav-item-fancy active">💬</div>
+                    <div class="nav-item-fancy">👥</div>
+                    <div class="nav-item-fancy">📞</div>
+                    <div class="nav-item-fancy">⚙️</div>
+                </div>
+            </div>
+            
+            <!-- СВЕЧЕНИЕ -->
+            <div class="glow-fancy"></div>
+        </div>
+    </div>
+
+    <style>
+        /* ОСНОВНОЙ ТЕЛЕФОН */
         .liquid-phone {
             position: relative;
-            width: 100%;
-            height: 100%;
-            border-radius: 70px;
+            width: 380px;
+            height: 780px;
+            border-radius: 80px;
             overflow: hidden;
             box-shadow: 
-                0 50px 100px rgba(0, 0, 0, 0.7),
-                0 0 0 2px rgba(255, 255, 255, 0.1) inset,
-                0 0 50px rgba(0, 200, 255, 0.3) inset;
-            backdrop-filter: blur(5px);
+                0 50px 100px rgba(0, 0, 0, 0.8),
+                0 0 0 3px rgba(255, 255, 255, 0.2) inset,
+                0 0 100px rgba(0, 255, 255, 0.3) inset;
             transform-style: preserve-3d;
-            animation: floatLiquid 8s infinite ease-in-out;
+            animation: phoneFloat 10s infinite ease-in-out;
         }
 
-        @keyframes floatLiquid {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(1deg) scale(1.02) translateY(-10px); }
-            75% { transform: rotate(-1deg) scale(0.98) translateY(10px); }
+        @keyframes phoneFloat {
+            0%, 100% { transform: rotate(0deg) translateY(0); }
+            25% { transform: rotate(2deg) translateY(-15px); }
+            75% { transform: rotate(-2deg) translateY(15px); }
         }
 
-        /* Слой с жидкой рябью */
-        .liquid-layer {
+        /* ЖИДКИЙ СЛОЙ (основной эффект воды) */
+        .fluid-layer {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: -20%;
+            left: -20%;
+            width: 140%;
+            height: 140%;
             background: radial-gradient(circle at 30% 40%, 
                 rgba(255, 255, 255, 0.3) 0%, 
-                rgba(255, 255, 255, 0.1) 30%,
-                rgba(255, 255, 255, 0.05) 60%,
+                rgba(0, 200, 255, 0.2) 30%,
+                rgba(150, 0, 255, 0.2) 60%,
                 transparent 80%);
             mix-blend-mode: overlay;
             pointer-events: none;
             z-index: 30;
-            animation: liquidRipple 12s infinite;
+            animation: fluidMove 15s infinite alternate;
+            filter: blur(10px);
         }
 
-        @keyframes liquidRipple {
-            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
-            33% { transform: scale(1.1) rotate(5deg); opacity: 0.7; }
-            66% { transform: scale(0.9) rotate(-5deg); opacity: 0.3; }
+        @keyframes fluidMove {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            25% { transform: translate(-5%, -5%) scale(1.1) rotate(5deg); }
+            50% { transform: translate(5%, 5%) scale(0.9) rotate(-5deg); }
+            75% { transform: translate(-5%, 5%) scale(1.05) rotate(3deg); }
+            100% { transform: translate(5%, -5%) scale(0.95) rotate(-3deg); }
         }
 
-        /* Эффект преломления по краям */
-        .refraction-edge {
+        /* ИСКАЖАЮЩИЕСЯ КРАЯ */
+        .warp-edges {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border-radius: 70px;
+            border-radius: 80px;
             box-shadow: 
-                inset 20px 20px 50px rgba(255, 255, 255, 0.3),
-                inset -20px -20px 50px rgba(0, 0, 0, 0.3),
-                inset 50px 0 80px rgba(0, 200, 255, 0.2),
-                inset -50px 0 80px rgba(200, 0, 255, 0.2),
-                inset 0 50px 80px rgba(255, 200, 0, 0.1),
-                inset 0 -50px 80px rgba(0, 255, 200, 0.1);
+                inset 30px 30px 70px rgba(255, 255, 255, 0.4),
+                inset -30px -30px 70px rgba(0, 0, 0, 0.4),
+                inset 70px 0 100px rgba(0, 200, 255, 0.3),
+                inset -70px 0 100px rgba(255, 0, 200, 0.3),
+                inset 0 70px 100px rgba(200, 255, 0, 0.2),
+                inset 0 -70px 100px rgba(0, 255, 200, 0.2);
             pointer-events: none;
             z-index: 40;
-            mix-blend-mode: screen;
-            animation: refractionPulse 6s infinite;
+            mix-blend-mode: soft-light;
+            animation: edgeWarp 8s infinite;
         }
 
-        @keyframes refractionPulse {
+        @keyframes edgeWarp {
             0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+            50% { opacity: 1; box-shadow: inset 50px 50px 100px rgba(255,255,255,0.5), inset -50px -50px 100px rgba(0,0,0,0.5); }
         }
 
-        /* Динамические капли на стекле */
-        .water-drops {
+        /* БЕШЕНЫЕ КАПЛИ */
+        .crazy-drops {
             position: absolute;
             top: 0;
             left: 0;
@@ -142,167 +299,165 @@
             pointer-events: none;
             z-index: 50;
             overflow: hidden;
-            border-radius: 70px;
+            border-radius: 80px;
         }
 
-        .drop-3d {
+        .crazy-drop {
             position: absolute;
+            width: var(--size);
+            height: var(--size);
+            top: var(--top);
+            left: var(--left);
             background: radial-gradient(circle at 30% 30%, 
-                rgba(255, 255, 255, 0.8) 0%, 
-                rgba(200, 220, 255, 0.4) 40%,
-                rgba(150, 180, 255, 0.2) 70%,
+                rgba(255, 255, 255, 0.7) 0%, 
+                rgba(100, 200, 255, 0.4) 40%,
+                rgba(150, 100, 255, 0.2) 70%,
                 transparent 90%);
-            border-radius: 50%;
-            filter: blur(5px) drop-shadow(0 0 20px rgba(0, 200, 255, 0.5));
-            transform: rotateX(45deg) rotateY(30deg);
-            animation: dropMove 15s infinite;
+            border-radius: 60% 40% 70% 30% / 40% 60% 30% 70%;
+            filter: blur(8px) drop-shadow(0 0 30px rgba(0, 200, 255, 0.5));
+            transform: rotateX(30deg) rotateY(20deg);
+            animation: crazyDropMove 12s infinite alternate;
+            animation-delay: var(--delay);
         }
 
-        .drop-3d:nth-child(1) {
-            width: 150px;
-            height: 150px;
-            top: 10%;
-            left: 20%;
-            animation-delay: 0s;
+        @keyframes crazyDropMove {
+            0% { 
+                transform: rotateX(30deg) rotateY(20deg) scale(1); 
+                border-radius: 60% 40% 70% 30% / 40% 60% 30% 70%;
+            }
+            25% { 
+                transform: rotateX(40deg) rotateY(30deg) scale(1.1) translate(20px, -20px);
+                border-radius: 40% 60% 30% 70% / 60% 40% 70% 30%;
+            }
+            50% { 
+                transform: rotateX(20deg) rotateY(10deg) scale(0.9) translate(-20px, 20px);
+                border-radius: 70% 30% 60% 40% / 30% 70% 40% 60%;
+            }
+            75% { 
+                transform: rotateX(50deg) rotateY(40deg) scale(1.05) translate(10px, 10px);
+                border-radius: 30% 70% 40% 60% / 70% 30% 60% 40%;
+            }
+            100% { 
+                transform: rotateX(30deg) rotateY(20deg) scale(1) translate(0, 0);
+                border-radius: 60% 40% 70% 30% / 40% 60% 30% 70%;
+            }
         }
 
-        .drop-3d:nth-child(2) {
-            width: 200px;
-            height: 200px;
-            bottom: 20%;
-            right: 10%;
-            animation-delay: 3s;
-        }
-
-        .drop-3d:nth-child(3) {
-            width: 100px;
-            height: 100px;
-            top: 50%;
-            left: 60%;
-            animation-delay: 1s;
-        }
-
-        .drop-3d:nth-child(4) {
-            width: 180px;
-            height: 180px;
-            bottom: 30%;
-            left: 15%;
-            animation-delay: 5s;
-        }
-
-        @keyframes dropMove {
-            0%, 100% { transform: translate(0, 0) rotateX(45deg) rotateY(30deg) scale(1); }
-            25% { transform: translate(20px, -20px) rotateX(50deg) rotateY(35deg) scale(1.1); }
-            50% { transform: translate(-20px, 20px) rotateX(40deg) rotateY(25deg) scale(0.9); }
-            75% { transform: translate(10px, 10px) rotateX(55deg) rotateY(40deg) scale(1.05); }
-        }
-
-        /* Стеклянный экран с искажениями */
-        .glass-screen {
+        /* УЛЬТРАПРОЗРАЧНЫЙ ЭКРАН */
+        .ultra-glass {
             position: relative;
             width: 100%;
             height: 100%;
             background: rgba(10, 15, 25, 0.15);
-            backdrop-filter: blur(25px) brightness(1.2);
-            -webkit-backdrop-filter: blur(25px) brightness(1.2);
-            border-radius: 70px;
+            backdrop-filter: blur(30px) brightness(1.5);
+            -webkit-backdrop-filter: blur(30px) brightness(1.5);
+            border-radius: 80px;
             padding: 25px 20px;
             display: flex;
             flex-direction: column;
             gap: 20px;
             color: white;
             z-index: 20;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5) inset;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.5) inset;
         }
 
-        /* Контент с полупрозрачностью */
-        .status-bar {
+        /* СТАТУС БАР */
+        .status-bar-fancy {
             display: flex;
             justify-content: space-between;
-            padding: 5px 10px;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.8);
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 30px;
-            backdrop-filter: blur(10px);
+            padding: 5px 15px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 40px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 10px rgba(0,200,255,0.5);
         }
 
-        /* Профиль */
-        .profile-section {
+        .time-fancy {
+            font-weight: 700;
+        }
+
+        /* ПРОФИЛЬ */
+        .profile-fancy {
             display: flex;
             align-items: center;
             gap: 15px;
-            padding: 10px;
+            padding: 10px 15px;
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 40px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .profile-avatar {
-            width: 55px;
-            height: 55px;
+        .avatar-liquid {
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #00c6fb, #005bea);
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 200, 255, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 255, 255, 0.5);
+            animation: avatarLiquid 5s infinite;
         }
 
-        .profile-avatar::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
-            animation: avatarShine 4s infinite;
+        @keyframes avatarLiquid {
+            0%, 100% { border-radius: 50%; }
+            25% { border-radius: 40% 60% 30% 70% / 60% 40% 70% 30%; }
+            50% { border-radius: 70% 30% 60% 40% / 30% 70% 40% 60%; }
+            75% { border-radius: 30% 70% 40% 60% / 70% 30% 60% 40%; }
         }
 
-        @keyframes avatarShine {
-            0%, 100% { transform: translate(-30%, -30%) rotate(0deg); }
-            50% { transform: translate(30%, 30%) rotate(180deg); }
+        .avatar-inner {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 20px rgba(255,255,255,0.8);
         }
 
-        .profile-info {
+        .profile-text {
             flex: 1;
         }
 
-        .profile-name {
-            font-size: 18px;
-            font-weight: 600;
+        .name-fancy {
+            font-size: 20px;
+            font-weight: 700;
             margin-bottom: 5px;
+            text-shadow: 0 0 15px rgba(0,200,255,0.7);
         }
 
-        .profile-status {
+        .status-fancy {
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.8);
         }
 
-        /* Поиск */
-        .search-section {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            padding: 15px 25px;
+        .menu-dots {
+            font-size: 30px;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transform: rotate(90deg);
+        }
+
+        /* ПОИСК */
+        .search-fancy {
             display: flex;
             align-items: center;
-            gap: 10px;
-            backdrop-filter: blur(15px);
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            padding: 15px 25px;
+            backdrop-filter: blur(20px);
+            font-size: 18px;
         }
 
-        .search-icon {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .search-input {
+        .search-input-fancy {
             background: transparent;
             border: none;
             color: white;
@@ -311,12 +466,13 @@
             outline: none;
         }
 
-        .search-input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+        .search-input-fancy::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
         }
 
-        /* Чаты */
-        .chats-container {
+        /* ЧАТЫ */
+        .chats-fancy {
             flex: 1;
             overflow-y: auto;
             display: flex;
@@ -325,405 +481,205 @@
             padding-right: 5px;
         }
 
-        .chat-row {
+        .chat-item-fancy {
             display: flex;
             align-items: center;
             gap: 15px;
             padding: 15px;
             background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            border-radius: 35px;
-            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 40px;
+            backdrop-filter: blur(15px);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
         }
 
-        .chat-row::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s;
+        .chat-item-fancy:hover {
+            background: rgba(79, 172, 254, 0.2);
+            border-color: rgba(79, 172, 254, 0.5);
+            transform: translateX(15px) scale(1.03);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
         }
 
-        .chat-row:hover {
-            background: rgba(79, 172, 254, 0.15);
-            border-color: rgba(79, 172, 254, 0.4);
-            transform: translateX(10px) scale(1.02);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .chat-row:hover::after {
-            opacity: 1;
-        }
-
-        .chat-avatar-small {
-            width: 50px;
-            height: 50px;
+        .chat-avatar-fancy {
+            width: 55px;
+            height: 55px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 18px;
+            font-size: 20px;
             position: relative;
             flex-shrink: 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
         }
 
-        .online-dot {
+        .online-liquid {
             position: absolute;
             bottom: 2px;
             right: 2px;
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             background: #4ade80;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255,255,255,0.3);
             box-shadow: 0 0 20px #4ade80;
-            animation: onlinePulse 2s infinite;
+            animation: onlineLiquid 2s infinite;
         }
 
-        @keyframes onlinePulse {
+        @keyframes onlineLiquid {
             0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.2); }
+            50% { opacity: 0.5; transform: scale(1.5); filter: blur(2px); }
         }
 
-        .chat-details {
+        .chat-content-fancy {
             flex: 1;
         }
 
-        .chat-header {
+        .chat-header-fancy {
             display: flex;
             justify-content: space-between;
             margin-bottom: 5px;
         }
 
-        .chat-title {
-            font-weight: 600;
+        .chat-name-fancy {
+            font-weight: 700;
             font-size: 16px;
         }
 
-        .chat-time {
+        .chat-time-fancy {
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.5);
         }
 
-        .chat-preview {
+        .chat-message-fancy {
             display: flex;
             justify-content: space-between;
             font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.7);
         }
 
-        .badge {
-            background: #4facfe;
+        .badge-fancy {
+            background: linear-gradient(135deg, #ff0066, #ff6600);
             color: white;
-            border-radius: 20px;
-            padding: 2px 8px;
+            border-radius: 30px;
+            padding: 2px 10px;
             font-size: 11px;
-            box-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255,0,102,0.5);
         }
 
-        /* Нижняя навигация */
-        .nav-menu {
+        /* НАВИГАЦИЯ */
+        .nav-fancy {
             display: flex;
             justify-content: space-around;
             padding: 15px 10px;
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 50px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 60px;
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             margin-top: 10px;
         }
 
-        .nav-item {
-            width: 50px;
-            height: 50px;
+        .nav-item-fancy {
+            width: 55px;
+            height: 55px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
             color: rgba(255, 255, 255, 0.5);
-            font-size: 22px;
+            font-size: 24px;
             transition: all 0.3s;
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
         }
 
-        .nav-item::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(79, 172, 254, 0.3) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s;
+        .nav-item-fancy:hover {
+            color: #00ffff;
+            transform: translateY(-8px) scale(1.1);
+            text-shadow: 0 0 30px #00ffff;
         }
 
-        .nav-item:hover {
-            color: #4facfe;
-            transform: translateY(-5px);
+        .nav-item-fancy.active {
+            color: #00ffff;
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 5px 30px rgba(0, 255, 255, 0.4);
         }
 
-        .nav-item:hover::before {
-            opacity: 1;
-        }
-
-        .nav-item.active {
-            color: #4facfe;
-            background: rgba(79, 172, 254, 0.2);
-            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.3);
-        }
-
-        /* Скролл */
-        .chats-container::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .chats-container::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 4px;
-        }
-
-        .chats-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-
-        /* Эффект свечения */
-        .glow-effect {
+        /* СВЕЧЕНИЕ */
+        .glow-fancy {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border-radius: 70px;
-            box-shadow: 0 0 100px rgba(0, 200, 255, 0.3);
-            animation: glowPulse 4s infinite;
+            border-radius: 80px;
+            box-shadow: 0 0 150px rgba(0, 255, 255, 0.4);
+            animation: glowPulseFancy 3s infinite;
             pointer-events: none;
-            z-index: 60;
+            z-index: 100;
         }
 
-        @keyframes glowPulse {
-            0%, 100% { opacity: 0.5; box-shadow: 0 0 100px rgba(0, 200, 255, 0.3); }
-            50% { opacity: 1; box-shadow: 0 0 150px rgba(0, 200, 255, 0.5); }
+        @keyframes glowPulseFancy {
+            0%, 100% { opacity: 0.3; box-shadow: 0 0 150px rgba(0, 255, 255, 0.4); }
+            50% { opacity: 0.8; box-shadow: 0 0 200px rgba(255, 0, 255, 0.6); }
+        }
+
+        /* СКРОЛЛ */
+        .chats-fancy::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chats-fancy::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .chats-fancy::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
     </style>
-</head>
-<body>
-    <!-- SVG фильтр для жидкого искажения -->
-    <svg>
-        <filter id="liquid-distortion" filterUnits="objectBoundingBox" x="0" y="0" width="100%" height="100%">
-            <feTurbulence baseFrequency="0.01 0.02" numOctaves="3" seed="2" result="turbulence"/>
-            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="15" xChannelSelector="R" yChannelSelector="G"/>
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feColorMatrix in="blur" mode="saturate" values="2"/>
-            <feBlend in="SourceGraphic" in2="blur" mode="screen"/>
-        </filter>
-    </svg>
-
-    <!-- Жидкий фон -->
-    <div class="liquid-background"></div>
-
-    <!-- Контейнер с искажением -->
-    <div class="distortion-container">
-        <div class="liquid-phone">
-            <!-- Слой с жидкой рябью -->
-            <div class="liquid-layer"></div>
-            
-            <!-- Эффект преломления -->
-            <div class="refraction-edge"></div>
-            
-            <!-- Капли -->
-            <div class="water-drops">
-                <div class="drop-3d"></div>
-                <div class="drop-3d"></div>
-                <div class="drop-3d"></div>
-                <div class="drop-3d"></div>
-            </div>
-            
-            <!-- Стеклянный экран -->
-            <div class="glass-screen">
-                <!-- Статус бар -->
-                <div class="status-bar">
-                    <span>📶 5G</span>
-                    <span>🔋 100%</span>
-                    <span>${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}</span>
-                </div>
-                
-                <!-- Профиль -->
-                <div class="profile-section">
-                    <div class="profile-avatar">A</div>
-                    <div class="profile-info">
-                        <div class="profile-name">Alex Master</div>
-                        <div class="profile-status">⚡ online · 2 unread</div>
-                    </div>
-                    <div style="font-size: 24px; color: rgba(255,255,255,0.5);">✎</div>
-                </div>
-                
-                <!-- Поиск -->
-                <div class="search-section">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" class="search-input" placeholder="Search or start new chat">
-                </div>
-                
-                <!-- Чаты -->
-                <div class="chats-container">
-                    <div class="chat-row">
-                        <div class="chat-avatar-small">
-                            M
-                            <span class="online-dot"></span>
-                        </div>
-                        <div class="chat-details">
-                            <div class="chat-header">
-                                <span class="chat-title">Mikhail</span>
-                                <span class="chat-time">12:30</span>
-                            </div>
-                            <div class="chat-preview">
-                                <span>Bro, check this out! 🔥</span>
-                                <span class="badge">2</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-row">
-                        <div class="chat-avatar-small">
-                            A
-                        </div>
-                        <div class="chat-details">
-                            <div class="chat-header">
-                                <span class="chat-title">Anna</span>
-                                <span class="chat-time">11:15</span>
-                            </div>
-                            <div class="chat-preview">
-                                <span>Photos 📸</span>
-                                <span class="badge">5</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-row">
-                        <div class="chat-avatar-small">
-                            W
-                            <span class="online-dot"></span>
-                        </div>
-                        <div class="chat-details">
-                            <div class="chat-header">
-                                <span class="chat-title">Work Team</span>
-                                <span class="chat-time">10:45</span>
-                            </div>
-                            <div class="chat-preview">
-                                <span>Dmitry: Meeting at 3pm</span>
-                                <span class="badge">12</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-row">
-                        <div class="chat-avatar-small">
-                            F
-                        </div>
-                        <div class="chat-details">
-                            <div class="chat-header">
-                                <span class="chat-title">Family</span>
-                                <span class="chat-time">09:20</span>
-                            </div>
-                            <div class="chat-preview">
-                                <span>Mom: Dinner's ready! 🍲</span>
-                                <span class="badge">3</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="chat-row">
-                        <div class="chat-avatar-small">
-                            D
-                            <span class="online-dot"></span>
-                        </div>
-                        <div class="chat-details">
-                            <div class="chat-header">
-                                <span class="chat-title">Dmitry</span>
-                                <span class="chat-time">Yesterday</span>
-                            </div>
-                            <div class="chat-preview">
-                                <span>CS:GO?</span>
-                                <span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Навигация -->
-                <div class="nav-menu">
-                    <div class="nav-item active">💬</div>
-                    <div class="nav-item">👥</div>
-                    <div class="nav-item">📞</div>
-                    <div class="nav-item">⚙️</div>
-                </div>
-            </div>
-            
-            <!-- Эффект свечения -->
-            <div class="glow-effect"></div>
-        </div>
-    </div>
 
     <script>
-        // Динамическое создание капель
-        function createDrops() {
-            const dropsContainer = document.querySelector('.water-drops');
-            for (let i = 0; i < 8; i++) {
+        // ЖИВОЕ ВРЕМЯ
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('liveTime').textContent = `${hours}:${minutes}`;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // ДИКИЙ ПАРАЛЛАКС
+        document.addEventListener('mousemove', (e) => {
+            const phone = document.querySelector('.liquid-phone');
+            const fluid = document.querySelector('.fluid-layer');
+            
+            const x = (e.clientX / window.innerWidth - 0.5) * 40;
+            const y = (e.clientY / window.innerHeight - 0.5) * 40;
+            
+            phone.style.transform = `rotateY(${x}deg) rotateX(${-y}deg) translateZ(30px)`;
+            fluid.style.transform = `translateX(${x*2}px) translateY(${y*2}px) scale(1.1)`;
+        });
+
+        // ДОБАВЛЯЕМ ЕЩЕ КАПЕЛЬ
+        function addMoreDrops() {
+            const dropsContainer = document.querySelector('.crazy-drops');
+            for (let i = 0; i < 10; i++) {
                 const drop = document.createElement('div');
-                drop.className = 'drop-3d';
-                
-                // Случайные размеры и позиции
-                const size = Math.random() * 150 + 100;
-                drop.style.width = size + 'px';
-                drop.style.height = size + 'px';
-                drop.style.top = Math.random() * 100 + '%';
-                drop.style.left = Math.random() * 100 + '%';
-                
-                // Случайная анимация
-                const duration = Math.random() * 10 + 10;
-                const delay = Math.random() * 5;
-                drop.style.animationDuration = duration + 's';
-                drop.style.animationDelay = delay + 's';
-                
+                drop.className = 'crazy-drop';
+                drop.style.setProperty('--delay', Math.random() * 8 + 's');
+                drop.style.setProperty('--size', Math.random() * 250 + 150 + 'px');
+                drop.style.setProperty('--top', Math.random() * 100 + '%');
+                drop.style.setProperty('--left', Math.random() * 100 + '%');
                 dropsContainer.appendChild(drop);
             }
         }
-
-        createDrops();
-
-        // Интерактивный параллакс с искажением
-        document.addEventListener('mousemove', (e) => {
-            const phone = document.querySelector('.liquid-phone');
-            const liquidLayer = document.querySelector('.liquid-layer');
-            
-            const x = (e.clientX / window.innerWidth - 0.5) * 30;
-            const y = (e.clientY / window.innerHeight - 0.5) * 30;
-            
-            phone.style.transform = `rotateY(${x}deg) rotateX(${-y}deg) translateZ(20px)`;
-            
-            // Двигаем жидкий слой отдельно для эффекта глубины
-            liquidLayer.style.transform = `translateX(${x}px) translateY(${y}px) scale(1.05)`;
-        });
-
-        // Обновление времени
-        function updateTime() {
-            const timeElement = document.querySelector('.status-bar span:last-child');
-            const now = new Date();
-            timeElement.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-        }
         
-        setInterval(updateTime, 1000);
+        addMoreDrops();
     </script>
 </body>
 </html>
