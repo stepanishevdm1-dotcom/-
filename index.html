@@ -14,7 +14,7 @@
 
         body {
             min-height: 100vh;
-            background: #1a1a2e;
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -27,14 +27,14 @@
             max-width: 100%;
             height: 900px;
             max-height: 95vh;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             display: flex;
             overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
         }
 
         /* ЛЕВАЯ ПАНЕЛЬ */
@@ -228,32 +228,10 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .suggestions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        .suggestion {
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 30px;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .suggestion:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
         .api-status {
             text-align: center;
             margin-top: 10px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.7);
             font-size: 12px;
         }
 
@@ -307,12 +285,6 @@
             <div class="messages" id="messages"></div>
 
             <div class="input-area">
-                <div class="suggestions">
-                    <span class="suggestion">Напиши код</span>
-                    <span class="suggestion">Переведи текст</span>
-                    <span class="suggestion">Объясни</span>
-                    <span class="suggestion">Идеи</span>
-                </div>
                 <div class="input-wrapper">
                     <textarea 
                         id="messageInput" 
@@ -327,8 +299,11 @@
     </div>
 
     <script>
-        // DeepSeek API Configuration - ВАШ КЛЮЧ
+        // DeepSeek API Configuration
         const DEEPSEEK_API_KEY = 'sk-d2142d4a4a9b40caa5e26889e1340c0b';
+        
+        // Используем CORS прокси для обхода блокировки
+        const PROXY_URL = 'https://corsproxy.io/?';
         const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
         // Элементы
@@ -340,37 +315,47 @@
         const apiStatus = document.getElementById('apiStatus');
 
         // Состояние
-        let messages = [];
+        let messages = JSON.parse(localStorage.getItem('current_chat')) || [];
         let chats = JSON.parse(localStorage.getItem('chats')) || [];
 
         // Загрузка
         function init() {
             updateAPIStatus();
             loadChats();
-            addWelcomeMessage();
+            if (messages.length === 0) {
+                addWelcomeMessage();
+            } else {
+                displayMessages();
+            }
         }
 
         function updateAPIStatus() {
-            if (DEEPSEEK_API_KEY) {
-                apiStatus.textContent = '✅ DeepSeek API подключен';
-                apiStatus.style.color = '#4ade80';
-            }
+            apiStatus.textContent = '✅ DeepSeek API подключен (через прокси)';
+            apiStatus.style.color = '#4ade80';
         }
 
         function loadChats() {
             chatsList.innerHTML = '';
-            chats.forEach(chat => {
+            chats.forEach((chat, index) => {
                 const div = document.createElement('div');
                 div.className = 'chat-item';
-                div.textContent = chat.title || 'Чат';
+                div.textContent = chat.title || 'Чат ' + (index + 1);
+                div.onclick = () => loadChat(chat);
                 chatsList.appendChild(div);
             });
         }
 
+        function loadChat(chat) {
+            messages = chat.messages || [];
+            displayMessages();
+        }
+
         function addWelcomeMessage() {
-            if (messages.length === 0) {
-                addMessage('assistant', 'Привет! Я DeepSeek в прозрачном интерфейсе. Спрашивай что угодно!');
-            }
+            messages = [{
+                role: 'assistant',
+                content: 'Привет! Я DeepSeek в прозрачном стекле. Спрашивай что угодно!'
+            }];
+            displayMessages();
         }
 
         function addMessage(role, content) {
@@ -379,7 +364,7 @@
                 content: content
             });
             displayMessages();
-            saveChat();
+            saveToLocalStorage();
         }
 
         function displayMessages() {
@@ -396,16 +381,18 @@
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
-        function saveChat() {
-            const lastMsg = messages[messages.length - 1]?.content || '';
-            const chat = {
-                id: Date.now(),
-                title: lastMsg.substring(0, 20),
-                messages: messages
-            };
+        function saveToLocalStorage() {
+            localStorage.setItem('current_chat', JSON.stringify(messages));
             
-            if (chats.length === 0 || chats[0]?.id !== chat.id) {
-                chats.unshift(chat);
+            // Сохраняем в историю
+            const chatTitle = messages[0]?.content.substring(0, 20) || 'Новый чат';
+            const chatExists = chats.some(c => c.title === chatTitle);
+            
+            if (!chatExists && messages.length > 1) {
+                chats.unshift({
+                    title: chatTitle,
+                    messages: messages
+                });
                 if (chats.length > 10) chats.pop();
                 localStorage.setItem('chats', JSON.stringify(chats));
                 loadChats();
@@ -416,7 +403,15 @@
             try {
                 addMessage('assistant', '⚡ печатает...');
 
-                const response = await fetch(API_URL, {
+                // Подготовка сообщений для API
+                const apiMessages = messages
+                    .filter(m => m.content !== '⚡ печатает...')
+                    .map(m => ({
+                        role: m.role,
+                        content: m.content
+                    }));
+
+                const response = await fetch(PROXY_URL + encodeURIComponent(API_URL), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -424,25 +419,65 @@
                     },
                     body: JSON.stringify({
                         model: 'deepseek-chat',
-                        messages: [
-                            { role: 'system', content: 'Ты DeepSeek. Отвечай кратко и по делу.' },
-                            ...messages.map(m => ({ role: m.role, content: m.content }))
-                        ]
+                        messages: apiMessages,
+                        temperature: 0.7,
+                        max_tokens: 1000
                     })
                 });
 
-                // Удаляем "печатает..."
+                // Удаляем сообщение "печатает..."
                 messages.pop();
 
-                if (!response.ok) throw new Error('Ошибка API');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
 
                 const data = await response.json();
-                addMessage('assistant', data.choices[0].message.content);
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    addMessage('assistant', data.choices[0].message.content);
+                } else {
+                    throw new Error('Неожиданный ответ API');
+                }
 
             } catch (error) {
-                messages.pop();
-                addMessage('assistant', '❌ Ошибка. Проверь API ключ.');
-                console.error(error);
+                console.error('Ошибка:', error);
+                
+                // Удаляем "печатает..." если есть
+                if (messages[messages.length - 1]?.content === '⚡ печатает...') {
+                    messages.pop();
+                }
+                
+                addMessage('assistant', '❌ Ошибка подключения. Пробую другой прокси...');
+                
+                // Пробуем второй прокси
+                try {
+                    const BACKUP_PROXY = 'https://api.allorigins.win/raw?url=';
+                    const response2 = await fetch(BACKUP_PROXY + encodeURIComponent(API_URL), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: 'deepseek-chat',
+                            messages: messages.filter(m => m.content !== '⚡ печатает...').map(m => ({
+                                role: m.role,
+                                content: m.content
+                            }))
+                        })
+                    });
+
+                    if (response2.ok) {
+                        const data2 = await response2.json();
+                        addMessage('assistant', data2.choices[0].message.content);
+                    } else {
+                        throw new Error('Все прокси упали');
+                    }
+                } catch (backupError) {
+                    addMessage('assistant', '❌ Не могу подключиться к API. Проверь:\n1️⃣ Интернет\n2️⃣ API ключ\n3️⃣ Баланс на аккаунте');
+                }
             }
         }
 
@@ -473,12 +508,7 @@
         newChatBtn.addEventListener('click', () => {
             messages = [];
             addWelcomeMessage();
-        });
-
-        document.querySelectorAll('.suggestion').forEach(s => {
-            s.addEventListener('click', () => {
-                messageInput.value = s.textContent;
-            });
+            localStorage.setItem('current_chat', JSON.stringify(messages));
         });
 
         // Запуск
