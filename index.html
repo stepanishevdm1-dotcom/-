@@ -1,170 +1,558 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Моё MAX-облако</title>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Live Stabilizer & Horizon Lock</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 900px; 
-            margin: 0 auto; 
-            padding: 20px; 
-            background: #f0f2f5; 
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111;
+            color: white;
+            touch-action: none;
         }
-        h1 { 
-            color: #2688eb; 
-            text-align: center;
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 20px;
+            border-radius: 40px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .description {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
+        #info h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #aaccff;
         }
-        .upload-box { 
-            background: white; 
-            border: 2px dashed #2688eb; 
-            padding: 40px; 
-            text-align: center; 
-            border-radius: 10px; 
-            margin: 20px 0; 
+        #info p {
+            margin: 5px 0 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .controls-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 400px;
+            margin: 0 auto;
+            pointer-events: all;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .control-label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #ddd;
+            text-shadow: 0 1px 2px black;
+        }
+        .mode-badge {
+            background: #2a3a4a;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #aaddff;
+            border: 1px solid #3a5a7a;
+        }
+        .slider-container {
+            flex: 1;
+            margin-left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type=range] {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #4a6a8a, #aaddff);
+            border-radius: 10px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,160,255,0.8);
+            border: 2px solid #4a90e2;
             cursor: pointer;
-            transition: all 0.3s;
         }
-        .upload-box:hover {
-            background: #f0f8ff;
-            border-color: #1a6eb8;
+        .value-display {
+            min-width: 45px;
+            text-align: center;
+            background: #1e2a36;
+            padding: 5px 8px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #aaddff;
         }
-        .file-list { 
-            margin-top: 30px; 
-        }
-        .file-item { 
-            background: white; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .file-name {
-            font-weight: bold;
-            color: #2688eb;
-            text-decoration: none;
-            font-size: 16px;
-        }
-        .file-name:hover {
-            text-decoration: underline;
-        }
-        .file-size {
-            color: #666;
-            font-size: 14px;
-            margin-top: 5px;
-        }
-        button { 
-            background: #2688eb; 
-            color: white; 
-            border: none; 
-            padding: 12px 25px; 
-            border-radius: 6px; 
-            font-size: 16px; 
+        .lock-toggle {
+            background: #1e3a4a;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             cursor: pointer;
-            margin: 10px 0;
+            transition: all 0.2s;
+            border: 1px solid #3a6a8a;
+            letter-spacing: 0.5px;
         }
-        button:hover { 
-            background: #1a6eb8; 
+        .lock-toggle.active {
+            background: #2a6a8a;
+            border-color: #8ac4ff;
+            box-shadow: 0 0 15px #3a9eff;
         }
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
+        .lock-toggle.active .lock-icon {
+            color: #ffd966;
         }
-        .success {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
+        .lock-icon {
+            font-size: 1.4rem;
+        }
+        .zoom-hint {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            border: 1px solid #4a6a8a;
+            backdrop-filter: blur(5px);
+            z-index: 25;
+            color: #ccc;
+        }
+        #videoCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+        #debugInfo {
+            position: absolute;
+            bottom: 150px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #8ae;
+            border: 1px solid #456;
+            z-index: 15;
+            backdrop-filter: blur(4px);
+        }
+        @media (max-width: 600px) {
+            .controls-panel { padding: 15px; }
+            .lock-toggle { padding: 10px 18px; font-size: 1rem; }
         }
     </style>
 </head>
 <body>
-    <h1>☁️ Моё MAX-облако</h1>
-    <div class="description">
-        Файлы хранятся в MAX/VK • Лимит 4 ГБ на файл • GitHub версия
+    <!-- Видео будет отображаться на canvas с эффектом стабилизации -->
+    <canvas id="videoCanvas"></canvas>
+    
+    <div id="info">
+        <h1>🎥 Gyro Stabilizer • Horizon Lock</h1>
+        <p>камера 0.6x (ширик) + стабилизация в реальном времени</p>
     </div>
-    
-    <div id="message"></div>
-    
-    <!-- Для загрузки через API нужно отдельное решение -->
-    <div style="text-align: center; padding: 20px; background: #fff3e0; border-radius: 8px; margin: 20px 0;">
-        <p>⚠️ GitHub Pages не поддерживает прямую загрузку файлов через API</p>
-        <p>Но ты можешь <b>просматривать и скачивать</b> свои файлы!</p>
+
+    <div class="zoom-hint">
+        🔍 Приближение (zoom) жестами на телефоне (встроенный зум камеры)
     </div>
-    
-    <div class="file-list" id="fileList">
-        <h3>📄 Загрузка списка файлов...</h3>
+
+    <div id="debugInfo">
+        🌀 α:0.00° β:0.00° γ:0.00° | стаб: 1.00x
     </div>
-    
+
+    <div class="controls-panel">
+        <div class="control-row">
+            <span class="control-label">⚡ мощность стабилизации</span>
+            <div class="slider-container">
+                <input type="range" id="stabStrength" min="0" max="1.5" step="0.01" value="1.0">
+                <span id="strengthValue" class="value-display">1.00x</span>
+            </div>
+        </div>
+
+        <div class="control-row">
+            <span class="control-label">🧭 режим блокировки горизонта</span>
+            <button id="horizonLockBtn" class="lock-toggle">
+                <span class="lock-icon">🔓</span>
+                <span id="lockText">Выкл</span>
+            </button>
+        </div>
+        
+        <div style="font-size:0.8rem; color:#aaa; text-align:center; border-top:1px solid #333; padding-top:8px;">
+            📱 Крутите телефон — видео остаётся ровным (имитация стаба). Работает на устройствах с гироскопом.
+        </div>
+    </div>
+
     <script>
-        const VK_TOKEN = 'vk1.a.r1EMRoy8jxXaDeBj7ZfD3fNDPhnJ-yQSUUP4TlOT_TM6eE39tB-xfJihwOf5oefW9F-CwWIsZE8L7T6Eth3Kuy_5m6D6CNf-8N-Va1eFk0j8yVR2XOKvlvcv7GZtssaqvOoeQrMktBnmGXH4ONxLRgRuvl8qzyVF0lYee3T9j0rQ7VCOUjd_RvOH_SXk_izijYXtRZHHZ55TDFs8Lmpe6w';
-        
-        function showMessage(text, type) {
-            const msgDiv = document.getElementById('message');
-            msgDiv.innerHTML = `<div class="${type}">${text}</div>`;
-            setTimeout(() => msgDiv.innerHTML = '', 5000);
-        }
-        
-        // Загружаем список файлов через JSONP (обход CORS)
-        function loadFileList() {
-            const listDiv = document.getElementById('fileList');
-            listDiv.innerHTML = '<h3>📄 Загрузка списка файлов...</h3>';
-            
-            // Создаем скрипт для JSONP запроса
-            const script = document.createElement('script');
-            const callbackName = 'vkCallback' + Math.random().toString(36).substr(2, 5);
-            
-            window[callbackName] = function(data) {
-                if (data.error) {
-                    listDiv.innerHTML = `<h3>❌ Ошибка: ${data.error.error_msg}</h3>`;
-                } else {
-                    displayFiles(data.response);
+        (function() {
+            // === Элементы ===
+            const canvas = document.getElementById('videoCanvas');
+            const ctx = canvas.getContext('2d');
+            const debugDiv = document.getElementById('debugInfo');
+            const strengthSlider = document.getElementById('stabStrength');
+            const strengthSpan = document.getElementById('strengthValue');
+            const lockBtn = document.getElementById('horizonLockBtn');
+            const lockIcon = lockBtn.querySelector('.lock-icon');
+            const lockText = document.getElementById('lockText');
+
+            // === Состояние ===
+            let videoStream = null;
+            let videoElement = document.createElement('video');
+            videoElement.autoplay = true;
+            videoElement.playsInline = true;
+            videoElement.muted = true; // важно для автоигра на iOS
+
+            // Переменные гироскопа
+            let alpha = 0, beta = 0, gamma = 0; // в радианах позже
+            let rawAlpha = 0, rawBeta = 0, rawGamma = 0; // исходные в градусах
+
+            // Параметры стабилизации
+            let stabilStrength = 1.0; // множитель мощности (0 = нет стаба, 1 = полная компенсация, >1 = гипер)
+            let horizonLock = false; // блокировка горизонта (обнуление крена/тангажа относительно начального)
+
+            // Начальное "нулевое" положение для horizonLock (запоминаем при первом событии или при включении)
+            let homeAlpha = 0, homeBeta = 0, homeGamma = 0;
+            let homeSet = false;
+
+            // Флаг, что гироскоп поддерживается
+            let gyroSupported = false;
+
+            // Размеры видео и canvas
+            let videoWidth = 1280, videoHeight = 720; // заглушки
+
+            // === Инициализация камеры (задняя, ширик 0.6x если доступно) ===
+            async function initCamera() {
+                try {
+                    // Пытаемся получить доступ к задней камере, предпочитая широкоугольную (0.6x)
+                    // Для этого используем ограничения на фокусное расстояние или deviceId, но проще запросить идеал
+                    const constraints = {
+                        video: {
+                            facingMode: { ideal: 'environment' }, // задняя камера
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            // Подсказка для широкоугольной камеры (не все браузеры поддерживают)
+                            zoom: { ideal: 0.6 }  // просим зум 0.6 (ширик) если камера с зумом
+                        },
+                        audio: false
+                    };
+                    
+                    videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    
+                    // Проверяем, есть ли треки видео
+                    if (videoStream.getVideoTracks().length === 0) throw new Error('No video track');
+                    
+                    const track = videoStream.getVideoTracks()[0];
+                    console.log('Используется камера:', track.label);
+                    
+                    // Пытаемся установить зум 0.6, если поддерживается
+                    if (track.getCapabilities) {
+                        const capabilities = track.getCapabilities();
+                        if (capabilities.zoom) {
+                            try {
+                                await track.applyConstraints({ zoom: 0.6 });
+                                console.log('Зум установлен на 0.6');
+                            } catch (e) {
+                                console.warn('Не удалось установить zoom 0.6, используется стандартный');
+                            }
+                        }
+                    }
+
+                    videoElement.srcObject = videoStream;
+                    
+                    // Ждем, когда видео начнет играть
+                    await videoElement.play();
+                    
+                    // Получаем реальные размеры
+                    videoWidth = videoElement.videoWidth;
+                    videoHeight = videoElement.videoHeight;
+                    
+                    // Настраиваем canvas
+                    resizeCanvas();
+                    
+                    // Запускаем рендер
+                    requestAnimationFrame(renderFrame);
+                    
+                } catch (err) {
+                    console.error('Ошибка доступа к камере:', err);
+                    alert('Не удалось получить доступ к камере. Убедитесь, что разрешение дано и используете HTTPS.');
                 }
-                delete window[callbackName];
-                document.body.removeChild(script);
-            };
-            
-            script.src = `https://api.vk.com/method/docs.get?access_token=${VK_TOKEN}&v=5.131&callback=${callbackName}`;
-            document.body.appendChild(script);
-        }
-        
-        function displayFiles(response) {
-            const listDiv = document.getElementById('fileList');
-            const files = response.items;
-            
-            if (files.length === 0) {
-                listDiv.innerHTML = '<h3>📄 У тебя пока нет файлов в MAX</h3>';
-                return;
             }
-            
-            let html = '<h3>📄 Мои файлы:</h3>';
-            files.forEach(file => {
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                const date = new Date(file.date * 1000).toLocaleString();
+
+            // Подгон размера canvas под экран с сохранением пропорций
+            function resizeCanvas() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                canvas.width = w;
+                canvas.height = h;
+            }
+
+            // === Обработка гироскопа ===
+            function handleOrientation(event) {
+                gyroSupported = true;
+                // Альфа: вращение вокруг Z (0-360), Бета: наклон вперёд-назад (-180..180), Гамма: наклон влево-вправо (-90..90)
+                rawAlpha = event.alpha || 0; // azimuth
+                rawBeta = event.beta || 0;    // pitch
+                rawGamma = event.gamma || 0;   // roll
+
+                // Если включен horizonLock и home не установлен, запоминаем текущее положение как "ровно"
+                if (horizonLock && !homeSet) {
+                    setHomePosition();
+                }
+
+                // Обновляем debug
+                updateDebug();
+            }
+
+            // Установить текущее положение как "дом" (ноль для блокировки)
+            function setHomePosition() {
+                homeAlpha = rawAlpha;
+                homeBeta = rawBeta;
+                homeGamma = rawGamma;
+                homeSet = true;
+                console.log('Home set:', homeAlpha, homeBeta, homeGamma);
+            }
+
+            // Сброс дома (при выключении блокировки)
+            function resetHome() {
+                homeSet = false;
+            }
+
+            // === Применение стабилизации ===
+            // Возвращает смещения для трансформации canvas: [dx, dy, rotate, scaleX, scaleY]
+            function computeStabilization() {
+                if (!gyroSupported) return { dx: 0, dy: 0, rotate: 0, scale: 1.0 };
+
+                // Преобразуем в радианы для удобства
+                let deltaAlpha = 0, deltaBeta = 0, deltaGamma = 0;
+
+                if (horizonLock && homeSet) {
+                    // Блокировка горизонта: считаем разницу от запомненного положения
+                    // Обрабатываем углы аккуратно, чтобы не было скачка через 360
+                    deltaAlpha = normalizeAngle(rawAlpha - homeAlpha);
+                    deltaBeta = normalizeAngle(rawBeta - homeBeta, 180); // бета в диапазоне -180..180
+                    deltaGamma = normalizeAngle(rawGamma - homeGamma, 90); // гамма -90..90
+                } else {
+                    // Без блокировки просто используем сырые углы (или можем компенсировать относительно начала)
+                    // Для простоты: если home не установлен, но блокировка выкл, считаем что нуль - это первый кадр
+                    if (!homeSet) {
+                        // Запоминаем первое значение как референс, чтобы картинка не прыгала вначале
+                        setHomePosition();
+                    }
+                    deltaAlpha = normalizeAngle(rawAlpha - homeAlpha);
+                    deltaBeta = normalizeAngle(rawBeta - homeBeta, 180);
+                    deltaGamma = normalizeAngle(rawGamma - homeGamma, 90);
+                }
+
+                // Применяем мощность стабилизации (чем выше stabilStrength, тем сильнее коррекция)
+                // Умножаем дельту на stabilStrength (1 = полная коррекция, 0 = нет коррекции)
+                // Для >1 будет гиперстабилизация (движение в обратную сторону)
+                const correctionAlpha = deltaAlpha * stabilStrength;
+                const correctionBeta = deltaBeta * stabilStrength;
+                const correctionGamma = deltaGamma * stabilStrength;
+
+                // Преобразуем углы коррекции в пиксельные смещения и поворот.
+                // Видео должно двигаться противоположно повороту телефона, чтобы компенсировать.
+                // Проще всего использовать transform: rotate(-correctionGamma) и смещение по X/Y от Beta/Alpha.
+                // Но на телефоне оси сложнее. Для демо: поворачиваем canvas на -gamma (крен), смещаем по горизонтали от alpha, по вертикали от beta.
+                // Это упрощённая модель, но для демонстрации концепции подходит.
                 
-                html += `
-                    <div class="file-item">
-                        <a href="${file.url}" class="file-name" target="_blank">${file.title}</a>
-                        <div class="file-size">${sizeMB} МБ</div>
-                        <div class="file-size">Добавлен: ${date}</div>
-                    </div>
-                `;
+                // Чувствительность: на сколько пикселей смещать при 1 градусе
+                const pxPerDegree = 8; // подбирается для эффекта
+                
+                // Смещение: чем больше мощность, тем больше движение в противоположную сторону
+                let dx = -correctionAlpha * pxPerDegree;   // альфа - рысканье -> смещение по X
+                let dy = -correctionBeta * pxPerDegree;    // бета - тангаж -> смещение по Y
+                let rotate = -correctionGamma;              // гамма - крен -> поворот (в градусах)
+
+                // Масштабирование для заполнения пустот при повороте
+                // Простейший способ: немного увеличить видео при повороте
+                let scale = 1.0;
+                if (Math.abs(rotate) > 0.1) {
+                    // Дополнительный зум при сильных поворотах, чтобы скрыть края
+                    // Но в реальном стабе нужно динамическое масштабирование.
+                    // Мы просто добавим небольшой буст, зависит от мощности
+                    scale = 1.0 + 0.3 * stabilStrength * (Math.abs(rotate) / 45); // макс ~1.3
+                } else {
+                    scale = 1.0 + 0.1 * stabilStrength; // небольшой запас по умолчанию
+                }
+
+                return { dx, dy, rotate, scale };
+            }
+
+            // Нормализация угла в диапазон [-180,180] или [-90,90] примерно
+            function normalizeAngle(angle, range = 180) {
+                if (range === 180) {
+                    while (angle > 180) angle -= 360;
+                    while (angle < -180) angle += 360;
+                } else if (range === 90) {
+                    while (angle > 90) angle -= 180;
+                    while (angle < -90) angle += 180;
+                } else {
+                    while (angle > 360) angle -= 360;
+                    while (angle < 0) angle += 360;
+                }
+                return angle;
+            }
+
+            // === Рендеринг кадра с эффектом стабилизации ===
+            function renderFrame() {
+                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                    // Получаем трансформацию
+                    const { dx, dy, rotate, scale } = computeStabilization();
+
+                    // Очищаем canvas (чтобы края были черными)
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Сохраняем контекст
+                    ctx.save();
+                    
+                    // Перемещаем центр canvas
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    
+                    // Применяем поворот (в радианах? но rotate в градусах)
+                    ctx.rotate(rotate * Math.PI / 180);
+                    
+                    // Масштабируем
+                    ctx.scale(scale, scale);
+                    
+                    // Смещение для компенсации (dx, dy)
+                    ctx.translate(dx, dy);
+                    
+                    // Рисуем видео так, чтобы его центр совпал с центром canvas
+                    const videoAspect = videoWidth / videoHeight;
+                    const canvasAspect = canvas.width / canvas.height;
+                    
+                    let drawWidth, drawHeight;
+                    if (videoAspect > canvasAspect) {
+                        // Видео шире — подгоняем по высоте
+                        drawHeight = canvas.height;
+                        drawWidth = drawHeight * videoAspect;
+                    } else {
+                        // Видео выше — подгоняем по ширине
+                        drawWidth = canvas.width;
+                        drawHeight = drawWidth / videoAspect;
+                    }
+                    
+                    // Позиция так, чтобы центр видео был в (0,0) после translate
+                    ctx.drawImage(videoElement, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
+                    
+                    // Восстанавливаем контекст
+                    ctx.restore();
+
+                    // Дополнительно рисуем небольшой индикатор по центру для теста (перекрестие)
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#ffffff66';
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(canvas.width/2 - 15, canvas.height/2);
+                    ctx.lineTo(canvas.width/2 + 15, canvas.height/2);
+                    ctx.moveTo(canvas.width/2, canvas.height/2 - 15);
+                    ctx.lineTo(canvas.width/2, canvas.height/2 + 15);
+                    ctx.stroke();
+                }
+                
+                requestAnimationFrame(renderFrame);
+            }
+
+            // === Обновление отладочной информации ===
+            function updateDebug() {
+                let lockStatus = horizonLock ? '🔒' : '🔓';
+                debugDiv.innerHTML = `🌀 α:${rawAlpha.toFixed(1)}° β:${rawBeta.toFixed(1)}° γ:${rawGamma.toFixed(1)}° | стаб: ${stabilStrength.toFixed(2)}x ${lockStatus}`;
+            }
+
+            // === Обработчики UI ===
+            strengthSlider.addEventListener('input', (e) => {
+                stabilStrength = parseFloat(e.target.value);
+                strengthSpan.textContent = stabilStrength.toFixed(2) + 'x';
             });
-            
-            listDiv.innerHTML = html;
-        }
-        
-        // Загружаем файлы при старте
-        window.onload = loadFileList;
+
+            lockBtn.addEventListener('click', () => {
+                horizonLock = !horizonLock;
+                if (horizonLock) {
+                    // Включаем блокировку: запоминаем текущее положение как горизонт
+                    setHomePosition();
+                    lockBtn.classList.add('active');
+                    lockIcon.textContent = '🔒';
+                    lockText.textContent = 'Вкл';
+                } else {
+                    resetHome();
+                    // Также можно запомнить текущее как новое плавающее начало? Для простоты пусть home остаётся, но мы его не используем, пока блокировка выкл.
+                    // Но чтобы при повторном включении не скакнуло, лучше сбросить homeSet и установить заново при включении.
+                    lockBtn.classList.remove('active');
+                    lockIcon.textContent = '🔓';
+                    lockText.textContent = 'Выкл';
+                    homeSet = false; // следующий кадр без блокировки установит home при необходимости
+                }
+            });
+
+            // При изменении размера окна
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+
+            // Запуск после загрузки
+            window.addEventListener('load', () => {
+                initCamera();
+                
+                // Проверка поддержки гироскопа
+                if (window.DeviceOrientationEvent) {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                    // Для iOS 13+可能需要请求权限
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        // На iOS требуется разрешение
+                        DeviceOrientationEvent.requestPermission()
+                            .then(permissionState => {
+                                if (permissionState === 'granted') {
+                                    window.addEventListener('deviceorientation', handleOrientation);
+                                } else {
+                                    alert('Нет разрешения на гироскоп');
+                                }
+                            })
+                            .catch(console.error);
+                    }
+                } else {
+                    alert('Гироскоп не поддерживается на этом устройстве');
+                }
+            });
+
+        })();
     </script>
 </body>
 </html>
