@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Video Stabilizer</title>
+    <title>Real Stabilizer</title>
     <style>
         body {
             margin: 0;
@@ -27,14 +27,14 @@
             bottom: 30px;
             left: 20px;
             background: rgba(0,0,0,0.7);
-            color: #0f0;
+            color: #ffaa00;
             padding: 8px 16px;
             border-radius: 20px;
             font-family: monospace;
             font-size: 0.9rem;
             z-index: 20;
             backdrop-filter: blur(5px);
-            border: 1px solid #0f03;
+            border: 1px solid #ffaa0033;
         }
         
         .controls-panel {
@@ -67,7 +67,7 @@
             width: 100%;
             height: 6px;
             -webkit-appearance: none;
-            background: linear-gradient(90deg, #2a6a8a, #8ac4ff);
+            background: linear-gradient(90deg, #ffaa00, #ffdd88);
             border-radius: 10px;
         }
         
@@ -77,12 +77,12 @@
             height: 22px;
             background: white;
             border-radius: 50%;
-            border: 2px solid #4a90e2;
+            border: 2px solid #ffaa00;
             cursor: pointer;
         }
         
         .value-badge {
-            color: #8ac4ff;
+            color: #ffaa00;
             font-weight: 600;
         }
         
@@ -104,8 +104,8 @@
         }
         
         .permission-btn {
-            background: #4a90e2;
-            color: white;
+            background: #ffaa00;
+            color: black;
             border: none;
             padding: 15px 40px;
             font-size: 1.2rem;
@@ -120,25 +120,25 @@
     <canvas id="videoCanvas"></canvas>
     
     <div id="permission-overlay">
-        <h2 style="color: white; margin-bottom: 20px;">🎥 Стабилизатор видео</h2>
-        <p style="color: #ccc; margin-bottom: 30px;">Нужен доступ к камере</p>
+        <h2 style="color: white; margin-bottom: 20px;">🎥 Стабилизатор изображения</h2>
+        <p style="color: #ccc; margin-bottom: 30px;">Убирает тряску рук в реальном времени</p>
         <button class="permission-btn" id="requestCameraBtn">📷 Включить камеру</button>
     </div>
 
     <div id="debugInfo">
-        ⏳ Анализ видео...
+        ⏳ Запуск...
     </div>
 
     <div class="controls-panel">
         <div class="control-row">
             <div class="control-label">
-                <span>🔍 Приближение (зум)</span>
-                <span id="zoomValue" class="value-badge">2.0x</span>
+                <span>🔍 Приближение</span>
+                <span id="zoomValue" class="value-badge">2.5x</span>
             </div>
-            <input type="range" id="zoomSlider" min="1.2" max="3.0" step="0.1" value="2.0">
+            <input type="range" id="zoomSlider" min="1.5" max="4.0" step="0.1" value="2.5">
         </div>
         <div class="control-label" style="margin-top: 10px; color: #aaa; font-size: 0.8rem;">
-            ⚡ Стабилизация: сглаживание движений
+            ⚡ Сглаживание: 90% (сильное)
         </div>
     </div>
 
@@ -149,7 +149,7 @@
             const debugDiv = document.getElementById('debugInfo');
             const overlay = document.getElementById('permission-overlay');
             
-            // Видео элемент
+            // Видео
             const video = document.createElement('video');
             video.autoplay = true;
             video.playsInline = true;
@@ -159,15 +159,23 @@
             let videoStream = null;
             let cameraActive = false;
             
-            // Параметры стабилизации
-            let zoom = 2.0; // приближение по умолчанию
+            // Параметры
+            let zoom = 2.5; // сильное приближение чтобы скрыть края
             
-            // Для стабилизации (сглаживание движений)
+            // СТАБИЛИЗАЦИЯ - сглаживание движений
+            let smoothX = 0;
+            let smoothY = 0;
+            let targetX = 0;
+            let targetY = 0;
+            
+            // Для анализа движения
             let prevFrameData = null;
-            let offsetX = 0;
-            let offsetY = 0;
-            let targetOffsetX = 0;
-            let targetOffsetY = 0;
+            let prevTime = performance.now();
+            
+            // История движений для сглаживания (чем больше история, тем плавнее)
+            const historySize = 15; // храним 15 последних смещений
+            const historyX = [];
+            const historyY = [];
             
             // Размеры
             let videoWidth = 1280;
@@ -219,74 +227,92 @@
                 }
             }
             
-            // Функция стабилизации
+            // ГЛАВНАЯ ФУНКЦИЯ СТАБИЛИЗАЦИИ
             function stabilizeFrame() {
                 if (!cameraActive || video.readyState < 2) {
                     requestAnimationFrame(stabilizeFrame);
                     return;
                 }
                 
-                // Создаем временный canvas для анализа текущего кадра
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
+                const currentTime = performance.now();
+                const timeDelta = currentTime - prevTime;
+                prevTime = currentTime;
                 
-                // Уменьшаем размер для анализа (для производительности)
-                const analyzeWidth = 80;
-                const analyzeHeight = 60;
+                // Анализируем движение
+                analyzeMotion();
                 
-                tempCanvas.width = analyzeWidth;
-                tempCanvas.height = analyzeHeight;
-                
-                // Рисуем текущий кадр уменьшенным
-                tempCtx.drawImage(video, 0, 0, analyzeWidth, analyzeHeight);
-                
-                // Получаем данные пикселей
-                const currentFrameData = tempCtx.getImageData(0, 0, analyzeWidth, analyzeHeight);
-                
-                // Если есть предыдущий кадр - сравниваем
-                if (prevFrameData) {
-                    // Ищем смещение между кадрами
-                    const offset = findOffset(prevFrameData, currentFrameData, analyzeWidth, analyzeHeight);
-                    
-                    // Плавно применяем смещение (сглаживание)
-                    targetOffsetX += offset.x * 0.5; // накапливаем смещение
-                    targetOffsetY += offset.y * 0.5;
-                    
-                    // Ограничиваем максимальное смещение
-                    targetOffsetX = Math.max(-30, Math.min(30, targetOffsetX));
-                    targetOffsetY = Math.max(-30, Math.min(30, targetOffsetY));
-                    
-                    // Плавно двигаемся к целевому смещению
-                    offsetX += (targetOffsetX - offsetX) * 0.1;
-                    offsetY += (targetOffsetY - offsetY) * 0.1;
-                    
-                    debugDiv.innerHTML = `📊 Стабилизация: ${Math.abs(offset.x).toFixed(1)}px | Зум: ${zoom.toFixed(1)}x`;
-                }
-                
-                // Сохраняем текущий кадр для следующего сравнения
-                prevFrameData = currentFrameData;
+                // Применяем сильное сглаживание (убирает тряску, оставляет плавные движения)
+                applySmoothing();
                 
                 // Отрисовываем стабилизированное видео
-                renderStabilizedVideo();
+                renderVideo();
                 
                 requestAnimationFrame(stabilizeFrame);
             }
             
-            // Поиск смещения между двумя кадрами
-            function findOffset(frame1, frame2, width, height) {
+            // Анализ движения между кадрами
+            function analyzeMotion() {
+                // Создаем маленькое изображение для анализа
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                const analyzeWidth = 64;  // очень маленькое для скорости
+                const analyzeHeight = 48;
+                
+                tempCanvas.width = analyzeWidth;
+                tempCanvas.height = analyzeHeight;
+                
+                // Рисуем текущий кадр
+                tempCtx.drawImage(video, 0, 0, analyzeWidth, analyzeHeight);
+                const currentData = tempCtx.getImageData(0, 0, analyzeWidth, analyzeHeight);
+                
+                if (prevFrameData) {
+                    // Ищем смещение
+                    const offset = findMotion(prevFrameData, currentData, analyzeWidth, analyzeHeight);
+                    
+                    // Добавляем в историю
+                    historyX.push(offset.x);
+                    historyY.push(offset.y);
+                    
+                    // Оставляем только последние historySize значений
+                    if (historyX.length > historySize) {
+                        historyX.shift();
+                        historyY.shift();
+                    }
+                    
+                    // Вычисляем целевое смещение (среднее за историю)
+                    if (historyX.length > 0) {
+                        let sumX = 0, sumY = 0;
+                        for (let i = 0; i < historyX.length; i++) {
+                            sumX += historyX[i];
+                            sumY += historyY[i];
+                        }
+                        
+                        // Целевое смещение - это СРЕДНЕЕ движение за последние кадры
+                        // Это и есть стабилизация - мы следуем за общим трендом, но игнорируем резкие скачки
+                        targetX = (sumX / historyX.length) * 3; // усиливаем для заметности
+                        targetY = (sumY / historyY.length) * 3;
+                    }
+                }
+                
+                prevFrameData = currentData;
+            }
+            
+            // Поиск движения между двумя кадрами
+            function findMotion(frame1, frame2, width, height) {
                 let bestX = 0;
                 let bestY = 0;
                 let bestDiff = Infinity;
                 
-                // Ищем смещение в небольшом диапазоне (для скорости)
-                const searchRange = 8;
+                // Ищем в небольшом радиусе (для скорости)
+                const searchRange = 6;
                 
-                for (let dy = -searchRange; dy <= searchRange; dy += 2) {
-                    for (let dx = -searchRange; dx <= searchRange; dx += 2) {
+                for (let dy = -searchRange; dy <= searchRange; dy += 1) {
+                    for (let dx = -searchRange; dx <= searchRange; dx += 1) {
                         let diff = 0;
-                        let pixelsCompared = 0;
+                        let count = 0;
                         
-                        // Сравниваем пиксели со смещением
+                        // Сравниваем пиксели
                         for (let y = 4; y < height - 4; y++) {
                             for (let x = 4; x < width - 4; x++) {
                                 const nx = x + dx;
@@ -296,15 +322,17 @@
                                     const i1 = (y * width + x) * 4;
                                     const i2 = (ny * width + nx) * 4;
                                     
-                                    // Разница по яркости (используем только зеленый канал для скорости)
-                                    const diff1 = Math.abs(frame1.data[i1] - frame2.data[i2]);
-                                    diff += diff1;
-                                    pixelsCompared++;
+                                    // Используем яркость (R+G+B)/3 для простоты
+                                    const b1 = (frame1.data[i1] + frame1.data[i1+1] + frame1.data[i1+2]) / 3;
+                                    const b2 = (frame2.data[i2] + frame2.data[i2+1] + frame2.data[i2+2]) / 3;
+                                    
+                                    diff += Math.abs(b1 - b2);
+                                    count++;
                                 }
                             }
                         }
                         
-                        const avgDiff = diff / pixelsCompared;
+                        const avgDiff = diff / count;
                         
                         if (avgDiff < bestDiff) {
                             bestDiff = avgDiff;
@@ -317,19 +345,35 @@
                 return { x: bestX, y: bestY };
             }
             
-            // Отрисовка стабилизированного видео
-            function renderStabilizedVideo() {
+            // Применение сглаживания (это ключевая часть!)
+            function applySmoothing() {
+                // Очень сильное сглаживание (99% - убирает почти всю тряску)
+                const smoothing = 0.95; // 0.95 = очень плавно, 0.8 = средне, 0.5 = быстро
+                
+                // Плавно двигаемся к цели
+                smoothX += (targetX - smoothX) * (1 - smoothing);
+                smoothY += (targetY - smoothY) * (1 - smoothing);
+                
+                // Ограничиваем максимальное смещение (чтобы не уехать слишком далеко)
+                const maxOffset = 50;
+                smoothX = Math.max(-maxOffset, Math.min(maxOffset, smoothX));
+                smoothY = Math.max(-maxOffset, Math.min(maxOffset, smoothY));
+            }
+            
+            // Отрисовка видео
+            function renderVideo() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.save();
                 
                 // Центрируем
                 ctx.translate(canvas.width / 2, canvas.height / 2);
                 
-                // Применяем зум (приближение)
+                // Приближение (чтобы не было черных краев)
                 ctx.scale(zoom, zoom);
                 
-                // Применяем смещение для стабилизации (инвертируем, чтобы компенсировать движение)
-                ctx.translate(-offsetX * 2, -offsetY * 2);
+                // СТАБИЛИЗАЦИЯ: двигаем видео в противоположную сторону движения
+                // Если рука движется вправо, видео двигаем влево и т.д.
+                ctx.translate(-smoothX, -smoothY);
                 
                 // Рисуем видео
                 const videoAspect = videoWidth / videoHeight;
@@ -346,6 +390,9 @@
                 
                 ctx.drawImage(video, -drawWidth/2, -drawHeight/2, drawWidth, drawHeight);
                 ctx.restore();
+                
+                // Отладочная информация
+                debugDiv.innerHTML = `🎯 Стабилизация: активна (${(smoothX).toFixed(1)}px, ${(smoothY).toFixed(1)}px) | Зум: ${zoom.toFixed(1)}x | История: ${historyX.length}`;
             }
             
             // UI обработчики
