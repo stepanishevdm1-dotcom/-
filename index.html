@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Liquid Glass - Рабочая версия</title>
+    <title>DeepSeek Liquid Glass - Рабочий</title>
     <style>
         * {
             margin: 0;
@@ -570,8 +570,8 @@
     </div>
 
     <script>
-        // DeepSeek API Configuration
-        const DEEPSEEK_API_KEY = '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'; // Ваш API ключ
+        // DeepSeek API Configuration - ВАШ КЛЮЧ
+        const DEEPSEEK_API_KEY = 'sk-d2142d4a4a9b40caa5e26889e1340c0b';
         const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
         // Элементы интерфейса
@@ -597,11 +597,11 @@
 
         // Проверка API статуса
         function updateAPIStatus() {
-            if (DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== 'YOUR_API_KEY_HERE') {
-                apiStatus.innerHTML = '✅ DeepSeek API подключен';
+            if (DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== 'sk-d2142d4a4a9b40caa5e26889e1340c0b') {
+                apiStatus.innerHTML = '✅ DeepSeek API подключен и готов к работе';
                 apiStatus.style.color = '#10b981';
             } else {
-                apiStatus.innerHTML = '⚠️ Вставьте ваш API ключ DeepSeek';
+                apiStatus.innerHTML = '⚠️ API ключ вставлен, проверяем подключение...';
                 apiStatus.style.color = '#f59e0b';
             }
         }
@@ -643,7 +643,7 @@
         // Приветственное сообщение
         function addWelcomeMessage() {
             if (messages.length === 0) {
-                addMessage('assistant', 'Привет! Я DeepSeek с интерфейсом из жидкого стекла. Задавай любые вопросы! 🌊');
+                addMessage('assistant', 'Привет! Я DeepSeek с интерфейсом из жидкого стекла. Твой API ключ активирован, можешь задавать любые вопросы! 🌊');
             }
         }
 
@@ -710,12 +710,9 @@
 
         // Отправка запроса к DeepSeek API
         async function sendToDeepSeek(userMessage) {
-            if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'YOUR_API_KEY_HERE') {
-                addMessage('assistant', '⚠️ Пожалуйста, вставьте ваш API ключ DeepSeek в переменную DEEPSEEK_API_KEY');
-                return;
-            }
-
             try {
+                addMessage('assistant', '🤔 Думаю над ответом...');
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -725,7 +722,7 @@
                     body: JSON.stringify({
                         model: 'deepseek-chat',
                         messages: [
-                            { role: 'system', content: 'Ты DeepSeek AI с интерфейсом из жидкого стекла. Отвечай кратко и по делу.' },
+                            { role: 'system', content: 'Ты DeepSeek AI с интерфейсом из жидкого стекла. Отвечай кратко и по делу, но с стиле жидкого стекла.' },
                             ...messages.map(m => ({ role: m.role, content: m.content }))
                         ],
                         temperature: 0.7,
@@ -733,6 +730,9 @@
                     })
                 });
 
+                // Удаляем сообщение "Думаю..."
+                messages.pop();
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ошибка! статус: ${response.status}`);
                 }
@@ -743,7 +743,8 @@
 
             } catch (error) {
                 console.error('Ошибка API:', error);
-                addMessage('assistant', '❌ Ошибка подключения к DeepSeek API. Проверьте API ключ и попробуйте снова.');
+                messages.pop(); // Удаляем "Думаю..."
+                addMessage('assistant', '❌ Ошибка подключения к DeepSeek API. Проверьте API ключ и баланс.');
             }
         }
 
@@ -799,17 +800,17 @@
         // Генерация жидких частиц
         function createLiquidParticles() {
             const overlay = document.querySelector('.fluid-overlay');
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 8; i++) {
                 const drop = document.createElement('div');
                 drop.style.position = 'absolute';
-                drop.style.width = Math.random() * 200 + 100 + 'px';
+                drop.style.width = Math.random() * 250 + 100 + 'px';
                 drop.style.height = drop.style.width;
                 drop.style.background = 'radial-gradient(circle at 30% 30%, rgba(79,172,254,0.2), transparent 70%)';
                 drop.style.borderRadius = '50%';
-                drop.style.filter = 'blur(20px)';
+                drop.style.filter = 'blur(25px)';
                 drop.style.top = Math.random() * 100 + '%';
                 drop.style.left = Math.random() * 100 + '%';
-                drop.style.animation = `float ${Math.random() * 10 + 10}s infinite alternate`;
+                drop.style.animation = `float ${Math.random() * 15 + 10}s infinite alternate`;
                 overlay.appendChild(drop);
             }
         }
