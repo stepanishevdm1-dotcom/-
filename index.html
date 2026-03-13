@@ -9,12 +9,20 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
-#vid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
-#threecv{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;}
+
+/* WebXR рендерит сам в canvas — мы только накладываем UI поверх */
+#threecv{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
+
+/* Скелет руки */
 #cv{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+
+/* Fallback: обычная камера если нет WebXR */
+#vid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none;}
+
 #cursor{position:fixed;z-index:3;pointer-events:none;width:22px;height:22px;border-radius:50%;border:2px solid #00ffcc;box-shadow:0 0 10px rgba(0,255,204,0.7);transform:translate(-50%,-50%);display:none;}
 #cursor.pinch{background:rgba(0,255,204,0.4);transform:translate(-50%,-50%) scale(0.7);}
 #holdring{position:fixed;z-index:3;pointer-events:none;transform:translate(-50%,-50%);display:none;}
+
 #hud{position:fixed;top:0;left:0;right:0;z-index:10;padding:12px 16px 8px;background:linear-gradient(180deg,rgba(0,0,0,.8)0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
 #logo{color:#00ffcc;font-size:12px;letter-spacing:4px;font-weight:bold;}
 #srow{display:flex;align-items:center;gap:8px;}
@@ -23,18 +31,38 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 #dot.err{background:#ff4444;box-shadow:0 0 8px #ff4444;}
 #stxt{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;}
 #modebar{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(0,0,0,0.65);border:1px solid rgba(0,255,204,0.3);border-radius:20px;padding:5px 16px;font-size:11px;color:#00ffcc;letter-spacing:2px;pointer-events:none;white-space:nowrap;}
+
 #hints{position:fixed;bottom:0;left:0;right:0;z-index:10;padding:10px 10px 16px;background:linear-gradient(0deg,rgba(0,0,0,.8)0%,transparent 100%);display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none;transition:opacity .4s;}
 #hints.hidden{opacity:0;}
 .h{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,.5);}
+
 #holdbar{position:fixed;z-index:10;pointer-events:none;bottom:82px;left:50%;transform:translateX(-50%);width:60vw;display:none;}
 #holdtrack{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
 #holdfill{height:100%;width:0%;border-radius:3px;}
+
 #flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;font-size:18px;font-weight:bold;letter-spacing:3px;opacity:0;transition:opacity .15s;text-align:center;line-height:1.7;}
 #flash.show{opacity:1;}
+
 #scale-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;pointer-events:none;font-size:13px;color:#00ffcc;letter-spacing:2px;background:rgba(0,0,0,0.6);border:1px solid rgba(0,255,204,0.3);border-radius:12px;padding:6px 14px;opacity:0;transition:opacity .2s;}
 #scale-indicator.show{opacity:1;}
 
-/* File pick overlay */
+/* START XR кнопка */
+#xr-btn{
+  position:fixed;inset:0;z-index:50;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(0,0,0,0.9);
+}
+#xr-btn-inner{
+  background:rgba(0,255,204,0.12);border:2px solid rgba(0,255,204,0.6);
+  color:#00ffcc;border-radius:30px;padding:16px 36px;
+  font-size:14px;font-weight:bold;letter-spacing:3px;cursor:pointer;
+  font-family:'Courier New',monospace;
+  box-shadow:0 0 30px rgba(0,255,204,0.2);
+}
+#xr-title{font-size:20px;font-weight:bold;color:#00ffcc;letter-spacing:5px;text-shadow:0 0 30px #00ffcc;}
+#xr-sub{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:2px;text-align:center;line-height:2;max-width:280px;}
+#xr-badge{font-size:11px;color:rgba(0,255,204,.4);letter-spacing:1px;border:1px solid rgba(0,255,204,.2);border-radius:20px;padding:4px 12px;}
+
 #filepick{position:fixed;inset:0;z-index:15;background:rgba(0,0,0,0.82);backdrop-filter:blur(12px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #filepick.show{display:flex;}
 #fp-title{font-size:15px;color:#00ffcc;letter-spacing:4px;}
@@ -42,51 +70,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 #fp-btn{background:rgba(0,255,204,0.1);border:1.5px solid rgba(0,255,204,0.5);color:#00ffcc;border-radius:30px;padding:13px 30px;font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;font-family:'Courier New',monospace;}
 #file-input{display:none;}
 
-/* File list — БОЛЬШИЕ строки для лёгкого попадания */
 #filelist-ov{position:fixed;inset:0;z-index:15;background:rgba(0,0,0,0.82);backdrop-filter:blur(12px);display:none;flex-direction:column;}
 #filelist-ov.show{display:flex;}
 #fl-hdr{padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:12px;color:#00ffcc;letter-spacing:3px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 #fl-hint-txt{font-size:10px;color:rgba(255,255,255,.3);}
 #fl-items{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0;}
 #fl-items::-webkit-scrollbar{display:none;}
-
-/* Большие карточки файлов — легко попасть пальцем */
-.fl-item{
-  display:flex;align-items:center;gap:16px;
-  padding:22px 24px;   /* <-- большой паддинг */
-  margin:6px 12px;     /* <-- отступы между карточками */
-  border-radius:14px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.07);
-  position:relative;overflow:hidden;
-  min-height:72px;     /* <-- минимальная высота строки */
-}
-.fl-item.hover{
-  border-color:rgba(0,255,204,0.6);
-  background:rgba(0,255,204,0.07);
-  box-shadow:0 0 20px rgba(0,255,204,0.1);
-}
+.fl-item{display:flex;align-items:center;gap:16px;padding:22px 24px;margin:6px 12px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);position:relative;overflow:hidden;min-height:72px;}
+.fl-item.hover{border-color:rgba(0,255,204,0.6);background:rgba(0,255,204,0.07);box-shadow:0 0 20px rgba(0,255,204,0.1);}
 .fl-icon{font-size:26px;flex-shrink:0;}
 .fl-info{flex:1;min-width:0;}
 .fl-name{font-size:14px;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 .fl-sub{font-size:10px;color:rgba(255,255,255,0.3);margin-top:3px;letter-spacing:1px;}
-.fl-dwell{
-  position:absolute;left:0;top:0;bottom:0;width:0%;
-  background:linear-gradient(90deg,rgba(0,255,204,0.15),rgba(0,255,204,0.05));
-  border-radius:14px;pointer-events:none;
-  transition:width .04s linear;
-}
-/* Прогресс-кольцо на карточке файла */
-.fl-ring{
-  width:44px;height:44px;flex-shrink:0;
-}
+.fl-dwell{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,rgba(0,255,204,0.15),rgba(0,255,204,0.05));border-radius:14px;pointer-events:none;}
+.fl-ring{width:44px;height:44px;flex-shrink:0;}
 .fl-ring circle.bg{stroke:rgba(255,255,255,0.1);}
-.fl-ring circle.fg{
-  stroke:#00ffcc;stroke-linecap:round;
-  stroke-dasharray:113;stroke-dashoffset:113;
-  transition:stroke-dashoffset .04s linear;
-  transform:rotate(-90deg);transform-origin:50% 50%;
-}
+.fl-ring circle.fg{stroke:#00ffcc;stroke-linecap:round;stroke-dasharray:113;stroke-dashoffset:113;transform:rotate(-90deg);transform-origin:50% 50%;}
 
 #loader{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #lt{font-size:24px;font-weight:bold;color:#00ffcc;letter-spacing:6px;text-shadow:0 0 30px #00ffcc;}
@@ -109,8 +108,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
   <button id="retry-btn" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
 </div>
 
-<video id="vid" playsinline autoplay muted></video>
+<!-- WebXR рендерит в этот canvas напрямую -->
 <canvas id="threecv"></canvas>
+<!-- Fallback для не-WebXR -->
+<video id="vid" playsinline autoplay muted></video>
 <canvas id="cv"></canvas>
 <div class="scanline"></div>
 
@@ -122,6 +123,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
     transform="rotate(-90 28 28)"/>
 </svg>
 
+<!-- Кнопка запуска AR сессии (нужно нажать руками) -->
+<div id="xr-btn" style="display:none;">
+  <div id="xr-title">AR HAND</div>
+  <div id="xr-sub">Нажми чтобы запустить AR.<br>Телефон отследит пространство.</div>
+  <div id="xr-btn-inner" onclick="startXR()">▶ ЗАПУСТИТЬ AR</div>
+  <div id="xr-badge">WebXR · Chrome Android</div>
+</div>
+
 <div id="hud">
   <div id="logo">AR·HAND</div>
   <div id="srow"><div id="dot"></div><span id="stxt">СТАРТ</span></div>
@@ -129,7 +138,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 <div id="modebar">НАВЕДИ РУКУ</div>
 <div id="hints">
   <div class="h">✌️ держи → файлы / переместить</div>
-  <div class="h">✋ открытая ладонь → размер</div>
+  <div class="h">✋ ладонь → размер</div>
   <div class="h">✊ держи → пауза</div>
 </div>
 <div id="holdbar"><div id="holdtrack"><div id="holdfill"></div></div></div>
@@ -152,81 +161,221 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 </div>
 
 <script>
-// ─── DOM ─────────────────────────────────────────────────────────────────────
-var vid=document.getElementById('vid');
-var threecv=document.getElementById('threecv');
-var cv=document.getElementById('cv');
-var ctx=cv.getContext('2d');
-var cursor=document.getElementById('cursor');
-var holdring=document.getElementById('holdring');
-var holdArc=document.getElementById('holdring-arc');
-var dot=document.getElementById('dot');
-var stxt=document.getElementById('stxt');
-var modebar=document.getElementById('modebar');
-var hb=document.getElementById('holdbar');
-var hf=document.getElementById('holdfill');
-var scaleInd=document.getElementById('scale-indicator');
-var loader=document.getElementById('loader');
-var lbI=document.getElementById('lb-i');
-var lmEl=document.getElementById('lm');
+// ═══════════════════════════════════════════════════════════════════════
+// РЕЖИМЫ:
+// 1. WebXR immersive-ar  — нативное AR, идеальная фиксация (Chrome Android)
+// 2. Fallback            — камера + гироскоп с хорошим сглаживанием
+// ═══════════════════════════════════════════════════════════════════════
+
+var vid      = document.getElementById('vid');
+var threecv  = document.getElementById('threecv');
+var cv       = document.getElementById('cv');
+var ctx      = cv.getContext('2d');
+var cursor   = document.getElementById('cursor');
+var holdring = document.getElementById('holdring');
+var holdArc  = document.getElementById('holdring-arc');
+var dot      = document.getElementById('dot');
+var stxt     = document.getElementById('stxt');
+var modebar  = document.getElementById('modebar');
+var hb       = document.getElementById('holdbar');
+var hf       = document.getElementById('holdfill');
+var scaleInd = document.getElementById('scale-indicator');
+var loader   = document.getElementById('loader');
+var lbI      = document.getElementById('lb-i');
+var lmEl     = document.getElementById('lm');
 function setLoad(p,m){lbI.style.width=p+'%';lmEl.textContent=m;}
 
-// ─── Resize ───────────────────────────────────────────────────────────────────
 function resize(){
-  cv.width=threecv.width=window.innerWidth;
-  cv.height=threecv.height=window.innerHeight;
-  if(renderer){
+  cv.width=window.innerWidth; cv.height=window.innerHeight;
+  if(!xrMode && renderer){
     renderer.setSize(window.innerWidth,window.innerHeight);
     camera3.aspect=window.innerWidth/window.innerHeight;
     camera3.updateProjectionMatrix();
+    threecv.width=window.innerWidth; threecv.height=window.innerHeight;
   }
 }
 window.addEventListener('resize',resize);
 
-// ─── Flash ────────────────────────────────────────────────────────────────────
 var flt;
 function showFlash(txt,col){
   var f=document.getElementById('flash');
-  f.innerHTML=txt;f.style.color=col||'#00ffcc';
+  f.innerHTML=txt; f.style.color=col||'#00ffcc';
   f.style.textShadow='0 0 24px '+(col||'#00ffcc');
-  f.classList.add('show');clearTimeout(flt);
+  f.classList.add('show'); clearTimeout(flt);
   flt=setTimeout(function(){f.classList.remove('show');},1200);
 }
 
-// ─── Three.js ─────────────────────────────────────────────────────────────────
-var renderer,scene3,camera3,videoMesh,videoContainer,videoTexture;
+// ─── Three.js ────────────────────────────────────────────────────────
+var renderer, scene3, camera3;
+var videoContainer=null, videoMesh=null, videoTexture=null;
+var billboardId=null;
 var panelScale=1.0;
+var xrMode=false;
+var xrSession=null;
+var xrRefSpace=null;
 
 function initThree(){
-  renderer=new THREE.WebGLRenderer({canvas:threecv,alpha:true,antialias:true});
+  renderer=new THREE.WebGLRenderer({canvas:threecv, alpha:true, antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   renderer.setSize(window.innerWidth,window.innerHeight);
   renderer.setClearColor(0x000000,0);
+  renderer.xr.enabled=true;
+
   scene3=new THREE.Scene();
   camera3=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.001,1000);
   camera3.position.set(0,0,0);
   scene3.add(camera3);
   scene3.add(new THREE.AmbientLight(0xffffff,1));
-  (function loop(){requestAnimationFrame(loop);renderer.render(scene3,camera3);})();
 }
 
-// ─── Billboard: только Y-вращение, панель всегда вертикальна ─────────────────
-var billboardId=null;
+// ─── WebXR старт ─────────────────────────────────────────────────────
+function startXR(){
+  document.getElementById('xr-btn').style.display='none';
+  navigator.xr.requestSession('immersive-ar',{
+    requiredFeatures:['local'],
+    optionalFeatures:['dom-overlay'],
+    domOverlay:{root:document.body}
+  }).then(function(session){
+    xrSession=session;
+    xrMode=true;
+
+    renderer.xr.setSession(session);
+    renderer.xr.setReferenceSpaceType('local');
+
+    session.requestReferenceSpace('local').then(function(refSpace){
+      xrRefSpace=refSpace;
+    });
+
+    // В WebXR режиме Three.js рендерит сам через setAnimationLoop
+    renderer.setAnimationLoop(function(time,frame){
+      if(frame && xrRefSpace){
+        var pose=frame.getViewerPose(xrRefSpace);
+        // camera3 автоматически обновляется через renderer.xr
+      }
+      renderer.render(scene3,camera3);
+    });
+
+    // Скелет MediaPipe читает из видео потока сессии
+    // WebXR даёт нам правильную камеру — MediaPipe получает кадры из vid
+    startHandLoop();
+    setTimeout(showFilePick,400);
+
+    session.addEventListener('end',function(){
+      xrMode=false; xrSession=null;
+      renderer.setAnimationLoop(null);
+      startFallbackLoop();
+    });
+
+    loader.style.display='none';
+  }).catch(function(e){
+    console.warn('WebXR failed:',e);
+    startFallback();
+  });
+}
+
+// ─── Fallback режим (без WebXR) ──────────────────────────────────────
+// Улучшенный гироскоп: используем quaternion напрямую через
+// DeviceMotion + complementary filter вместо Euler углов
+
+var fallbackRunning=false;
+
+// Quaternion от гироскопа
+var gyroQ=new THREE.Quaternion();
+var gyroQ_world=new THREE.Quaternion();
+// Коррекция ориентации для мобильного (portrait)
+var screenQ=new THREE.Quaternion(-Math.sqrt(0.5),0,0,Math.sqrt(0.5));
+// Сглаживание
+var targetQ=new THREE.Quaternion();
+var SMOOTH=0.05; // скорость слежения (меньше = плавнее, но запаздывает)
+
+// Используем deviceorientationabsolute если доступно (точнее)
+var gyroReady=false;
+
+function setupGyro(){
+  var handler=function(e){
+    if(e.absolute===undefined||e.absolute===null){} // не абсолютный, всё равно используем
+    if(e.alpha===null) return;
+    gyroReady=true;
+
+    // Конвертируем Euler → Quaternion правильно для мобильного
+    var alpha=THREE.MathUtils.degToRad(e.alpha); // z
+    var beta =THREE.MathUtils.degToRad(e.beta);  // x
+    var gamma=THREE.MathUtils.degToRad(e.gamma); // y
+
+    // Правильный порядок для мобильного браузера
+    var qZ=new THREE.Quaternion(); qZ.setFromAxisAngle(new THREE.Vector3(0,0,1),-alpha);
+    var qX=new THREE.Quaternion(); qX.setFromAxisAngle(new THREE.Vector3(1,0,0), beta);
+    var qY=new THREE.Quaternion(); qY.setFromAxisAngle(new THREE.Vector3(0,1,0),-gamma);
+
+    gyroQ_world.multiplyQuaternions(qZ,qX).multiply(qY);
+    // Применяем коррекцию экрана
+    targetQ.multiplyQuaternions(gyroQ_world,screenQ);
+  };
+
+  // Пробуем абсолютный сначала
+  window.addEventListener('deviceorientationabsolute',handler,true);
+  window.addEventListener('deviceorientation',handler,true);
+}
+
+function startFallback(){
+  loader.style.display='none';
+  document.getElementById('xr-btn').style.display='none';
+
+  // Показываем камеру как фон
+  vid.style.display='block';
+  threecv.style.zIndex='1'; // Three.js поверх видео прозрачный
+
+  setupGyro();
+  requestGyroPermission();
+
+  // Рендер петля fallback
+  var baseSet=false;
+  var baseQ=new THREE.Quaternion();
+
+  (function loop(){
+    requestAnimationFrame(loop);
+    if(gyroReady){
+      if(!baseSet){
+        // Запоминаем начальную ориентацию как "ноль"
+        baseQ.copy(targetQ).invert();
+        baseSet=true;
+      }
+      // Применяем delta от начала
+      var deltaQ=new THREE.Quaternion().multiplyQuaternions(baseQ,targetQ);
+      // Сглаживание slerp
+      camera3.quaternion.slerp(deltaQ,SMOOTH);
+    }
+    renderer.render(scene3,camera3);
+  })();
+
+  startHandLoop();
+  setTimeout(showFilePick,400);
+}
+
+function startFallbackLoop(){
+  vid.style.display='block';
+}
+
+function requestGyroPermission(){
+  if(typeof DeviceOrientationEvent!=='undefined'&&
+     typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().catch(function(){});
+  }
+}
+
+// ─── Billboard только по Y ────────────────────────────────────────────
 function startBillboard(){
   if(billboardId) clearInterval(billboardId);
   billboardId=setInterval(function(){
     if(!videoContainer) return;
     var camPos=new THREE.Vector3();
     camera3.getWorldPosition(camPos);
-    var pPos=videoContainer.position;
-    var dx=camPos.x-pPos.x;
-    var dz=camPos.z-pPos.z;
-    // Только горизонтальный поворот
-    videoContainer.rotation.set(0,Math.atan2(dx,dz),0);
+    var p=videoContainer.position;
+    videoContainer.rotation.set(0,Math.atan2(camPos.x-p.x,camPos.z-p.z),0);
   },40);
 }
 
-// ─── Размещение панели перед камерой ─────────────────────────────────────────
+// ─── Разместить панель ────────────────────────────────────────────────
 function placePanel(){
   if(!videoElAR||!videoTexture) return;
 
@@ -248,112 +397,41 @@ function placePanel(){
     startBillboard();
   }
 
-  // Направление взгляда камеры, только горизонтально
   var dir=new THREE.Vector3(0,0,-1);
   dir.applyQuaternion(camera3.quaternion);
   dir.y=0;
   if(dir.lengthSq()<0.001) dir.set(0,0,-1);
   dir.normalize();
-
   var pos=camera3.position.clone().addScaledVector(dir,2.5);
-  pos.y=camera3.position.y; // на уровне взгляда
+  pos.y=camera3.position.y;
   videoContainer.position.copy(pos);
 
   videoElAR.muted=false;
   videoElAR.play().catch(function(){videoElAR.muted=true;videoElAR.play().catch(function(){});});
 }
 
-// ─── Гироскоп → вращение камеры ─────────────────────────────────────────────
-// Хранение сглаженных углов
-var smoothAlpha=null,smoothBeta=null;
-var baseAlpha=null;
-var GYRO_SMOOTH=0.85; // инерция сглаживания (0=нет, 1=заморожено)
-
-window.addEventListener('deviceorientation',function(e){
-  if(e.alpha===null) return;
-
-  if(baseAlpha===null){
-    baseAlpha=e.alpha;
-    smoothAlpha=0;
-    smoothBeta=e.beta-90;
-    return;
-  }
-
-  // Угол yaw — горизонтальный поворот телефона
-  var rawAlpha=-(e.alpha-baseAlpha);
-  // Обработка перехода 360→0
-  while(rawAlpha>180) rawAlpha-=360;
-  while(rawAlpha<-180) rawAlpha+=360;
-
-  // Угол pitch — наклон вперёд/назад (телефон вертикально = 90°)
-  var rawBeta=e.beta-90;
-
-  // Экспоненциальное сглаживание — убирает дрожание
-  if(smoothAlpha===null){smoothAlpha=rawAlpha;smoothBeta=rawBeta;}
-  smoothAlpha=GYRO_SMOOTH*smoothAlpha+(1-GYRO_SMOOTH)*rawAlpha;
-  smoothBeta =GYRO_SMOOTH*smoothBeta +(1-GYRO_SMOOTH)*rawBeta;
-
-  var qY=new THREE.Quaternion();
-  qY.setFromAxisAngle(new THREE.Vector3(0,1,0),THREE.MathUtils.degToRad(smoothAlpha));
-  var qX=new THREE.Quaternion();
-  qX.setFromAxisAngle(new THREE.Vector3(1,0,0),THREE.MathUtils.degToRad(smoothBeta));
-  camera3.quaternion.multiplyQuaternions(qY,qX);
-});
-
-function requestGyro(){
-  if(typeof DeviceOrientationEvent!=='undefined'&&
-     typeof DeviceOrientationEvent.requestPermission==='function'){
-    DeviceOrientationEvent.requestPermission().catch(function(){});
-  }
-}
-
-// ─── Масштаб через открытую ладонь ───────────────────────────────────────────
-// Расстояние большой↔мизинец в нормализованных coords (0..1)
-// При входе в жест запоминаем текущий spread и текущий panelScale
-// При изменении spread — масштабируем пропорционально
-// Без нижнего ограничения — уменьшается сколько угодно
-
-var scaleRefSpread=null;
-var scaleRefPanelScale=1.0;
-var scaleIndTimer=null;
-
+// ─── Масштаб ──────────────────────────────────────────────────────────
+var scaleRefSpread=null,scaleRefPanelScale=1.0,scaleIndTimer=null;
 function applyScaleGesture(lms){
   var thumb=lms[4],pinky=lms[20];
   var spread=Math.hypot(thumb.x-pinky.x,thumb.y-pinky.y);
-
-  if(scaleRefSpread===null){
-    // Запоминаем начальные значения
-    scaleRefSpread=spread;
-    scaleRefPanelScale=panelScale;
-    return;
-  }
-
+  if(scaleRefSpread===null){scaleRefSpread=spread;scaleRefPanelScale=panelScale;return;}
   if(scaleRefSpread<0.01) return;
-  var ratio=spread/scaleRefSpread;
-  // Без ограничения снизу — любой маленький размер
-  panelScale=Math.max(0.0001,scaleRefPanelScale*ratio);
-
-  if(videoContainer){
-    videoContainer.scale.setScalar(panelScale);
-  }
-
+  panelScale=Math.max(0.0001,scaleRefPanelScale*(spread/scaleRefSpread));
+  if(videoContainer) videoContainer.scale.setScalar(panelScale);
   scaleInd.textContent='↔ '+Math.round(panelScale*100)+'%';
   scaleInd.classList.add('show');
   clearTimeout(scaleIndTimer);
   scaleIndTimer=setTimeout(function(){scaleInd.classList.remove('show');},800);
 }
 
-// ─── Файлы ────────────────────────────────────────────────────────────────────
+// ─── Файлы ────────────────────────────────────────────────────────────
 var files=[],currentMode='idle',videoElAR=null;
-
 document.getElementById('file-input').addEventListener('change',function(e){
-  Array.from(e.target.files).forEach(function(f){
-    files.push({name:f.name,url:URL.createObjectURL(f),size:f.size});
-  });
+  Array.from(e.target.files).forEach(function(f){files.push({name:f.name,url:URL.createObjectURL(f),size:f.size});});
   this.value='';
   if(files.length) showFileList();
 });
-
 function showFilePick(){
   currentMode='pick';
   document.getElementById('filepick').classList.add('show');
@@ -369,30 +447,16 @@ function showFileList(){
   document.getElementById('hints').classList.remove('hidden');
   renderFileList();
 }
-function fmtSize(b){
-  if(b>1e6) return (b/1e6).toFixed(1)+' МБ';
-  return (b/1e3).toFixed(0)+' КБ';
-}
+function fmtSize(b){return b>1e6?(b/1e6).toFixed(1)+' МБ':(b/1e3).toFixed(0)+' КБ';}
 function renderFileList(){
   var el=document.getElementById('fl-items');el.innerHTML='';
   files.forEach(function(f,i){
     var item=document.createElement('div');
     item.className='fl-item';item.dataset.idx=i;
-    item.innerHTML=
-      '<div class="fl-dwell"></div>'+
-      '<div class="fl-icon">🎬</div>'+
-      '<div class="fl-info">'+
-        '<div class="fl-name">'+escHtml(f.name)+'</div>'+
-        '<div class="fl-sub">'+(f.size?fmtSize(f.size):'')+'</div>'+
-      '</div>'+
-      '<svg class="fl-ring" viewBox="0 0 36 36">'+
-        '<circle class="bg" cx="18" cy="18" r="14" fill="none" stroke-width="2"/>'+
-        '<circle class="fg" cx="18" cy="18" r="14" fill="none" stroke-width="2.5"/>'+
-      '</svg>';
+    item.innerHTML='<div class="fl-dwell"></div><div class="fl-icon">🎬</div><div class="fl-info"><div class="fl-name">'+escHtml(f.name)+'</div><div class="fl-sub">'+(f.size?fmtSize(f.size):'')+'</div></div><svg class="fl-ring" viewBox="0 0 36 36"><circle class="bg" cx="18" cy="18" r="14" fill="none" stroke-width="2"/><circle class="fg" cx="18" cy="18" r="14" fill="none" stroke-width="2.5"/></svg>';
     el.appendChild(item);
   });
 }
-
 function selectFile(idx){
   var f=files[idx];
   if(videoElAR) videoElAR.pause();
@@ -402,82 +466,44 @@ function selectFile(idx){
   videoElAR.addEventListener('loadeddata',function(){
     if(videoTexture) videoTexture.dispose();
     videoTexture=new THREE.VideoTexture(videoElAR);
-    videoTexture.minFilter=THREE.LinearFilter;
-    videoTexture.magFilter=THREE.LinearFilter;
+    videoTexture.minFilter=THREE.LinearFilter;videoTexture.magFilter=THREE.LinearFilter;
     if(videoContainer){scene3.remove(videoContainer);videoContainer=null;videoMesh=null;}
     document.getElementById('filelist-ov').classList.remove('show');
-    currentMode='playing';
-    modebar.textContent='✌️ держи → переместить';
+    currentMode='playing';modebar.textContent='✌️ держи → переместить';
     document.getElementById('hints').classList.remove('hidden');
-    requestGyro();
     placePanel();
     showFlash('▶ '+f.name.slice(0,22),'#00ffcc');
   },{once:true});
 }
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// ─── Скелет ───────────────────────────────────────────────────────────────────
+// ─── Скелет ───────────────────────────────────────────────────────────
 var FC=['#ff9933','#00ffcc','#33ddff','#bb66ff','#ff55aa'];
-var FSEG=[
-  {s:[[0,1],[1,2],[2,3],[3,4]],c:'#ff9933'},
-  {s:[[0,5],[5,6],[6,7],[7,8]],c:'#00ffcc'},
-  {s:[[5,9],[9,10],[10,11],[11,12]],c:'#33ddff'},
-  {s:[[9,13],[13,14],[14,15],[15,16]],c:'#bb66ff'},
-  {s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'}
-];
-var PALM=[[0,17],[5,9],[9,13],[13,17]];
-var TIPS=[4,8,12,16,20],MCPS=[1,5,9,13,17];
+var FSEG=[{s:[[0,1],[1,2],[2,3],[3,4]],c:'#ff9933'},{s:[[0,5],[5,6],[6,7],[7,8]],c:'#00ffcc'},{s:[[5,9],[9,10],[10,11],[11,12]],c:'#33ddff'},{s:[[9,13],[13,14],[14,15],[15,16]],c:'#bb66ff'},{s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'}];
+var PALM=[[0,17],[5,9],[9,13],[13,17]],TIPS=[4,8,12,16,20],MCPS=[1,5,9,13,17];
 function pt(lms,i){return{x:lms[i].x*cv.width,y:lms[i].y*cv.height};}
 function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
-
 function drawHand(lms,gest){
   ctx.clearRect(0,0,cv.width,cv.height);
   ctx.save();ctx.globalAlpha=0.11;ctx.lineCap='round';
-  FSEG.forEach(function(f){
-    ctx.strokeStyle=f.c;ctx.lineWidth=13;ctx.shadowColor=f.c;ctx.shadowBlur=22;
-    f.s.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
-  });ctx.restore();
+  FSEG.forEach(function(f){ctx.strokeStyle=f.c;ctx.lineWidth=13;ctx.shadowColor=f.c;ctx.shadowBlur=22;f.s.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});});ctx.restore();
   ctx.save();ctx.lineCap='round';
   PALM.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.strokeStyle='rgba(0,255,200,0.16)';ctx.lineWidth=0.7;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
-  FSEG.forEach(function(f){
-    f.s.forEach(function(ab){
-      var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
-      ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.3;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
-      ctx.strokeStyle=f.c;ctx.lineWidth=0.75;ctx.shadowColor=f.c;ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
-    });
-  });ctx.restore();
+  FSEG.forEach(function(f){f.s.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.3;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();ctx.strokeStyle=f.c;ctx.lineWidth=0.75;ctx.shadowColor=f.c;ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});});ctx.restore();
   ctx.save();
-  for(var i=0;i<21;i++){
-    var p=pt(lms,i);
-    var col=i<=4?FC[0]:i<=8?FC[1]:i<=12?FC[2]:i<=16?FC[3]:FC[4];
-    if(TIPS.indexOf(i)>=0){
-      ctx.shadowColor=col;ctx.shadowBlur=18;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=0.9;ctx.shadowBlur=0;ctx.beginPath();ctx.arc(p.x,p.y,7.5,0,Math.PI*2);ctx.stroke();
-    } else if(i===0){
-      ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.shadowColor=col;ctx.shadowBlur=10;ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.stroke();
-      ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.stroke();
-    } else if(MCPS.indexOf(i)>=0){
-      ctx.strokeStyle=col;ctx.lineWidth=1.1;ctx.shadowColor=col;ctx.shadowBlur=7;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.stroke();
-      ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
-    } else {
-      ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=4;ctx.globalAlpha=0.82;ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-    }
-  }
-  if(gest==='PINCH'){
-    var t=pt(lms,4),ix=pt(lms,8);
-    ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(ix.x,ix.y);ctx.stroke();
-  }
+  for(var i=0;i<21;i++){var p=pt(lms,i);var col=i<=4?FC[0]:i<=8?FC[1]:i<=12?FC[2]:i<=16?FC[3]:FC[4];
+    if(TIPS.indexOf(i)>=0){ctx.shadowColor=col;ctx.shadowBlur=18;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=0.9;ctx.shadowBlur=0;ctx.beginPath();ctx.arc(p.x,p.y,7.5,0,Math.PI*2);ctx.stroke();}
+    else if(i===0){ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.shadowColor=col;ctx.shadowBlur=10;ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.stroke();ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.stroke();}
+    else if(MCPS.indexOf(i)>=0){ctx.strokeStyle=col;ctx.lineWidth=1.1;ctx.shadowColor=col;ctx.shadowBlur=7;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();}
+    else{ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=4;ctx.globalAlpha=0.82;ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}}
+  if(gest==='PINCH'){var t=pt(lms,4),ix=pt(lms,8);ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(ix.x,ix.y);ctx.stroke();}
   ctx.restore();
 }
 
-// ─── Жесты ────────────────────────────────────────────────────────────────────
-function fingerUp(lms,tip,dip,mcp){
-  var w=lms[0];var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};
-  return dw(lms[tip])>dw(lms[dip])&&dw(lms[tip])>dw(lms[mcp]);
-}
+// ─── Жесты ────────────────────────────────────────────────────────────
+function fingerUp(lms,tip,dip,mcp){var w=lms[0];var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};return dw(lms[tip])>dw(lms[dip])&&dw(lms[tip])>dw(lms[mcp]);}
 function getGest(lms){
-  var idx=fingerUp(lms,8,7,5),mid=fingerUp(lms,12,11,9),
-      ring=fingerUp(lms,16,15,13),pinky=fingerUp(lms,20,19,17);
+  var idx=fingerUp(lms,8,7,5),mid=fingerUp(lms,12,11,9),ring=fingerUp(lms,16,15,13),pinky=fingerUp(lms,20,19,17);
   var pinch=dst(lms[4],lms[8])<0.08;
   if(!idx&&!mid&&!ring&&!pinky) return 'FIST';
   if(idx&&mid&&ring&&pinky)     return 'OPEN';
@@ -487,144 +513,92 @@ function getGest(lms){
   return 'OTHER';
 }
 
-// ─── Dwell — большая зона попадания ──────────────────────────────────────────
+// ─── Dwell ────────────────────────────────────────────────────────────
 var dwellTarget=null,dwellStart=0,DWELL_MS=1000;
-
 function updateDwell(fx,fy){
   if(currentMode!=='filelist') return;
-  var items=document.querySelectorAll('.fl-item');
-  var hit=null;
-  items.forEach(function(item){
-    var r=item.getBoundingClientRect();
-    // Расширяем зону на 20px со всех сторон — легче попасть
-    if(fx>=r.left-20&&fx<=r.right+20&&fy>=r.top-20&&fy<=r.bottom+20) hit=item;
-  });
-
+  var items=document.querySelectorAll('.fl-item');var hit=null;
+  items.forEach(function(item){var r=item.getBoundingClientRect();if(fx>=r.left-20&&fx<=r.right+20&&fy>=r.top-20&&fy<=r.bottom+20)hit=item;});
   if(hit){
-    // Убрать подсветку с других
-    items.forEach(function(i){
-      if(i!==hit){
-        i.classList.remove('hover');
-        i.querySelector('.fl-dwell').style.width='0%';
-        i.querySelector('.fg').style.strokeDashoffset='113';
-      }
-    });
+    items.forEach(function(i){if(i!==hit){i.classList.remove('hover');i.querySelector('.fl-dwell').style.width='0%';i.querySelector('.fg').style.strokeDashoffset='113';}});
     hit.classList.add('hover');
-
     if(dwellTarget!==hit){dwellTarget=hit;dwellStart=Date.now();}
     var pct=Math.min(1,(Date.now()-dwellStart)/DWELL_MS);
-    // Заполнение фона
     hit.querySelector('.fl-dwell').style.width=(pct*100)+'%';
-    // Кольцо прогресса
-    var circ=113;
-    hit.querySelector('.fg').style.strokeDashoffset=(circ*(1-pct))+'';
-
-    if(pct>=1){
-      var idx=parseInt(hit.dataset.idx);
-      dwellTarget=null;
-      selectFile(idx);
-    }
+    hit.querySelector('.fg').style.strokeDashoffset=(113*(1-pct))+'';
+    if(pct>=1){var idx=parseInt(hit.dataset.idx);dwellTarget=null;selectFile(idx);}
   } else {
-    if(dwellTarget){
-      dwellTarget.querySelector('.fl-dwell').style.width='0%';
-      dwellTarget.querySelector('.fg').style.strokeDashoffset='113';
-      dwellTarget.classList.remove('hover');
-      dwellTarget=null;
-    }
+    if(dwellTarget){dwellTarget.querySelector('.fl-dwell').style.width='0%';dwellTarget.querySelector('.fg').style.strokeDashoffset='113';dwellTarget.classList.remove('hover');dwellTarget=null;}
   }
 }
 
-// ─── Hold ─────────────────────────────────────────────────────────────────────
+// ─── Hold ─────────────────────────────────────────────────────────────
 var holdG='',holdStart=0,lastTrig=0,HOLD_MS=750;
 function tryHold(g,fx,fy){
   var now=Date.now();
-  if(g==='OPEN'){return;} // масштаб не мешает hold
+  if(g==='OPEN') return;
   if(g!==holdG){holdG=g;holdStart=now;hideRing();hb.style.display='none';return;}
   var held=now-holdStart;
   var needsHold=(g==='PEACE')||(g==='FIST'&&currentMode==='playing');
-  if(needsHold&&held>100){
-    var pct=Math.min(1,held/HOLD_MS);
-    showRing(fx,fy,pct);
-    if(g==='FIST'){hb.style.display='block';hf.style.background='#ff6633';hf.style.boxShadow='0 0 8px #ff6633';hf.style.width=(pct*100)+'%';}
-  } else {hideRing();hb.style.display='none';}
+  if(needsHold&&held>100){var pct=Math.min(1,held/HOLD_MS);showRing(fx,fy,pct);if(g==='FIST'){hb.style.display='block';hf.style.background='#ff6633';hf.style.boxShadow='0 0 8px #ff6633';hf.style.width=(pct*100)+'%';}}
+  else{hideRing();hb.style.display='none';}
   if(held>=HOLD_MS&&now-lastTrig>1500){
     lastTrig=now;holdStart=now;hideRing();hb.style.display='none';
-    if(g==='PEACE'){
-      if(currentMode==='idle'||currentMode==='pick'||currentMode==='filelist') showFilePick();
-      else if(currentMode==='playing'){placePanel();showFlash('📌 ПЕРЕМЕЩЕНО','#00ffcc');}
-    }
-    if(g==='FIST'&&currentMode==='playing'){
-      if(videoElAR){
-        if(videoElAR.paused) videoElAR.play().catch(function(){});
-        else videoElAR.pause();
-        showFlash(videoElAR.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc');
-      }
-    }
+    if(g==='PEACE'){if(currentMode==='idle'||currentMode==='pick'||currentMode==='filelist')showFilePick();else if(currentMode==='playing'){placePanel();showFlash('📌 ПЕРЕМЕЩЕНО','#00ffcc');}}
+    if(g==='FIST'&&currentMode==='playing'){if(videoElAR){if(videoElAR.paused)videoElAR.play().catch(function(){});else videoElAR.pause();showFlash(videoElAR.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc');}}
   }
 }
 function showRing(x,y,pct){holdring.style.display='block';holdring.style.left=x+'px';holdring.style.top=y+'px';holdArc.style.strokeDashoffset=(150.8*(1-pct))+''; }
 function hideRing(){holdring.style.display='none';}
 
-// ─── MediaPipe ────────────────────────────────────────────────────────────────
-var hands;
-function initHands(){
+// ─── MediaPipe — читает из <video> ────────────────────────────────────
+var hands, handSource;
+function initHands(sourceEl){
+  handSource=sourceEl;
   hands=new Hands({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/'+f;}});
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
   hands.onResults(function(res){
     ctx.clearRect(0,0,cv.width,cv.height);
     if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){
-      var lms=res.multiHandLandmarks[0];
-      var g=getGest(lms);
+      var lms=res.multiHandLandmarks[0];var g=getGest(lms);
       drawHand(lms,g);
-
-      // Масштаб — только когда видео играет
-      if(g==='OPEN'&&currentMode==='playing'){
-        applyScaleGesture(lms);
-      } else {
-        // Сбрасываем ref когда жест сменился
-        scaleRefSpread=null;
-      }
-
+      if(g==='OPEN'&&currentMode==='playing') applyScaleGesture(lms);
+      else scaleRefSpread=null;
       var tip=pt(lms,8);
       cursor.style.display='block';cursor.style.left=tip.x+'px';cursor.style.top=tip.y+'px';
       cursor.className=g==='PINCH'?'pinch':'';
-      updateDwell(tip.x,tip.y);
-      tryHold(g,tip.x,tip.y);
+      updateDwell(tip.x,tip.y);tryHold(g,tip.x,tip.y);
       dot.className='on';stxt.textContent=g;
     } else {
       ctx.clearRect(0,0,cv.width,cv.height);
       cursor.style.display='none';hideRing();hb.style.display='none';
-      dot.className='';stxt.textContent='НЕТ РУКИ';holdG='';
-      scaleRefSpread=null;
+      dot.className='';stxt.textContent='НЕТ РУКИ';holdG='';scaleRefSpread=null;
       if(dwellTarget){dwellTarget.querySelector('.fl-dwell').style.width='0%';dwellTarget.querySelector('.fg').style.strokeDashoffset='113';dwellTarget=null;}
     }
   });
 }
-
 function startHandLoop(){
   var lastT=0;
   function frame(ts){
     requestAnimationFrame(frame);
-    if(vid.readyState<2||vid.paused) return;
+    if(!handSource||handSource.readyState<2||handSource.paused) return;
     if(ts-lastT<50) return;
     lastT=ts;
-    hands.send({image:vid}).catch(function(){});
+    hands.send({image:handSource}).catch(function(){});
   }
   requestAnimationFrame(frame);
 }
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
+// ─── Boot ─────────────────────────────────────────────────────────────
 (async function(){
   try{
     setLoad(10,'Инициализация Three.js…');
     initThree();resize();
 
     setLoad(30,'Загрузка MediaPipe…');
-    initHands();
-    setLoad(55,'Загрузка модели рук…');
-    await hands.initialize();
 
-    setLoad(80,'Включение камеры…');
+    // Запускаем камеру ПЕРВОЙ — один поток
+    setLoad(60,'Включение камеры…');
     var stream=null;
     var opts=[
       {video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},
@@ -638,12 +612,27 @@ function startHandLoop(){
     vid.srcObject=stream;
     await new Promise(function(r){vid.onloadedmetadata=function(){vid.play().then(r);};});
 
+    setLoad(75,'Загрузка модели рук…');
+    initHands(vid);
+    await hands.initialize();
+
     setLoad(100,'Готово!');
-    setTimeout(function(){
+
+    // Проверяем поддержку WebXR
+    var xrSupported=false;
+    if(navigator.xr){
+      try{xrSupported=await navigator.xr.isSessionSupported('immersive-ar');}catch(e){}
+    }
+
+    if(xrSupported){
+      // Показываем кнопку запуска AR
       loader.style.display='none';
-      startHandLoop();
-      setTimeout(showFilePick,400);
-    },300);
+      document.getElementById('xr-btn').style.display='flex';
+    } else {
+      // Сразу в fallback режим
+      startFallback();
+    }
+
   }catch(err){
     setLoad(0,'Ошибка: '+err.message);
     lmEl.style.color='#ff6666';
