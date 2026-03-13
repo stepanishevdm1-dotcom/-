@@ -141,7 +141,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
   <input id="file-input" type="file" accept="video/*" multiple>
 </div>
 
-<div class="ov" id="ov-list" style="justify-content:flex-start;padding-top:0;">
+<div class="ov" id="ov-list" style="justify-content:flex-start!important;padding-top:0!important;">
   <div id="fl-hdr" style="align-self:stretch;">
     <span>◈ ВИДЕО</span>
     <span id="fl-sub">☝️ наведи и задержи</span>
@@ -216,7 +216,7 @@ function initThree(){
 var rawA=0,rawB=0,rawG=0;       // сырые углы
 var smA=0,smB=0,smG=0;          // сглаженные
 var gyroReady=false, gyroInit=false;
-var GYRO_LP=0.6; // low-pass коэффициент: 0=нет сглаживания, 1=заморожено
+var GYRO_LP=0.25; // маленькое = быстрее, меньше задержки // low-pass коэффициент: 0=нет сглаживания, 1=заморожено
 
 // Коррекция угла alpha при переходе 360→0
 function lerpAngle(cur, target, k){
@@ -334,22 +334,30 @@ var currentMode='idle', files=[], curVid=null;
 
 function showPick(){
   currentMode='pick';
-  document.getElementById('ov-pick').classList.add('show');
-  document.getElementById('ov-list').classList.remove('show');
+  var p=document.getElementById('ov-pick');
+  var l=document.getElementById('ov-list');
+  l.classList.remove('show'); l.style.display='none';
+  p.style.display='';
+  p.classList.add('show');
   modebar.textContent='ВЫБЕРИ ФАЙЛ';
   document.getElementById('hints').classList.add('hidden');
 }
 function showList(){
-  document.getElementById('ov-pick').classList.remove('show');
-  document.getElementById('ov-list').classList.add('show');
+  var p=document.getElementById('ov-pick');
+  var l=document.getElementById('ov-list');
+  p.classList.remove('show'); p.style.display='none';
+  l.style.display='';
+  l.classList.add('show');
   currentMode='list';
   modebar.textContent='☝️ НАВЕДИ НА ВИДЕО';
   document.getElementById('hints').classList.remove('hidden');
   buildList();
 }
 function hideAll(){
-  document.getElementById('ov-pick').classList.remove('show');
-  document.getElementById('ov-list').classList.remove('show');
+  var p=document.getElementById('ov-pick');
+  var l=document.getElementById('ov-list');
+  p.classList.remove('show'); p.style.display='none';
+  l.classList.remove('show'); l.style.display='none';
 }
 
 document.getElementById('file-input').addEventListener('change',function(e){
@@ -383,7 +391,11 @@ function buildList(){
 
 function loadVideo(idx){
   var f=files[idx];
-  hideAll();
+  // Принудительно скрываем все overlays
+  document.getElementById('ov-pick').classList.remove('show');
+  document.getElementById('ov-pick').style.display='none';
+  document.getElementById('ov-list').classList.remove('show');
+  document.getElementById('ov-list').style.display='none';
   spinner.classList.add('show');
   if(curVid){try{curVid.pause();}catch(e){}curVid.src='';curVid=null;}
   if(vtex){vtex.dispose();vtex=null;}
