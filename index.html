@@ -3,125 +3,140 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>AR File Player</title>
+<title>AR Hand Player</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
 
+/* Camera always behind */
 #vid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+
+/* Skeleton canvas on top of camera */
 #cv{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 
-/* ── AR floating window ── */
-#arwin{
-  position:fixed;z-index:10;
-  display:none;flex-direction:column;
-  border-radius:16px;overflow:hidden;
-  border:1.5px solid rgba(0,255,204,0.3);
-  box-shadow:0 0 40px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);
-  background:rgba(8,8,8,0.88);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  transition:opacity .15s, border-color .15s;
-  width:88vw;
-}
-#arwin.show{display:flex;}
-/* Semi-transparent when dragging or resizing — hand skeleton visible through */
-#arwin.moving{
-  opacity:0.45;
-  border-color:rgba(0,255,204,0.7);
-  box-shadow:0 0 0 2px rgba(0,255,204,0.5),0 0 60px rgba(0,255,204,0.12);
-}
+/* AR world canvas — video panels drawn here */
+#worldcv{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;}
 
-/* Titlebar — drag zone */
-#titlebar{
-  display:flex;align-items:center;gap:8px;padding:9px 12px;
-  background:rgba(12,12,12,0.95);
-  border-bottom:1px solid rgba(255,255,255,0.07);
-  flex-shrink:0;cursor:grab;user-select:none;touch-action:none;
-}
-.tdot{width:10px;height:10px;border-radius:50%;}
-.tdot.r{background:#ff5f57;}.tdot.y{background:#febc2e;}.tdot.g{background:#28c840;}
-#titlelabel{flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-#tbtn-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;}
-
-/* Video player */
-#mediaplayer{
-  width:100%;aspect-ratio:16/9;background:#000;flex-shrink:0;display:none;
-  position:relative;
-}
-#mediaplayer video{width:100%;height:100%;display:block;background:#000;}
-
-/* File picker */
-#filepanel{
-  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  background:rgba(10,10,10,0.6);min-height:80px;
-}
-#filepanel::-webkit-scrollbar{display:none;}
-
-#pick-btn-wrap{padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;}
-#pick-btn{
-  background:rgba(0,255,204,0.12);border:1.5px solid rgba(0,255,204,0.4);
-  color:#00ffcc;border-radius:30px;padding:12px 28px;
-  font-size:13px;font-weight:bold;letter-spacing:2px;cursor:pointer;
-  font-family:'Courier New',monospace;width:100%;max-width:280px;
-}
-#pick-btn:active{background:rgba(0,255,204,0.22);}
-#pick-hint{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:1px;text-align:center;}
-#file-input{display:none;}
-
-/* File list */
-#filelist{padding:0 0 8px;}
-.fitem{
-  display:flex;align-items:center;gap:10px;padding:11px 14px;
-  border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;
-  transition:background .1s;
-}
-.fitem:active{background:rgba(255,255,255,0.07);}
-.fitem.playing{background:rgba(0,255,204,0.07);border-left:2px solid #00ffcc;}
-.ficon{font-size:20px;flex-shrink:0;width:28px;text-align:center;}
-.fname{flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fdur{font-size:10px;color:rgba(255,255,255,0.3);flex-shrink:0;}
-
-/* Resize handle — bottom-right corner */
-#reshandle{
-  position:absolute;bottom:0;right:0;
-  width:36px;height:36px;cursor:se-resize;touch-action:none;
-  display:flex;align-items:flex-end;justify-content:flex-end;padding:7px;z-index:11;
-}
-#reshandle svg{opacity:.25;}
-
-/* ── HUD ── */
-#hud{position:fixed;top:0;left:0;right:0;z-index:20;padding:14px 18px 10px;background:linear-gradient(180deg,rgba(0,0,0,.8)0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
-#logo{color:#00ffcc;font-size:13px;letter-spacing:5px;font-weight:bold;}
+/* HUD */
+#hud{position:fixed;top:0;left:0;right:0;z-index:20;padding:12px 16px 8px;
+  background:linear-gradient(180deg,rgba(0,0,0,.75)0%,transparent 100%);
+  display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
+#logo{color:#00ffcc;font-size:12px;letter-spacing:4px;font-weight:bold;}
 #srow{display:flex;align-items:center;gap:8px;}
-#dot{width:8px;height:8px;border-radius:50%;background:#444;transition:background .2s,box-shadow .2s;}
+#dot{width:8px;height:8px;border-radius:50%;background:#444;}
 #dot.on{background:#00ffcc;box-shadow:0 0 8px #00ffcc;}
 #dot.err{background:#ff4444;box-shadow:0 0 8px #ff4444;}
-#stxt{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:1px;}
+#stxt{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;}
 
-/* ── Hints ── */
-#hints{position:fixed;bottom:0;left:0;right:0;z-index:20;padding:12px 10px 18px;background:linear-gradient(0deg,rgba(0,0,0,.85)0%,transparent 100%);display:flex;flex-wrap:wrap;gap:7px;justify-content:center;pointer-events:none;transition:opacity .4s;}
-#hints.hidden{opacity:0;}
-.h{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.55);}
+/* Gesture mode indicator */
+#modeindicator{
+  position:fixed;top:56px;left:50%;transform:translateX(-50%);
+  z-index:20;pointer-events:none;
+  background:rgba(0,0,0,0.55);border:1px solid rgba(0,255,204,0.3);
+  border-radius:20px;padding:5px 16px;
+  font-size:11px;color:#00ffcc;letter-spacing:2px;
+  backdrop-filter:blur(6px);
+}
 
-/* Hold bar */
-#holdbar{position:fixed;z-index:25;pointer-events:none;bottom:86px;left:50%;transform:translateX(-50%);width:60vw;display:none;}
-#holdtrack{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
-#holdfill{height:100%;width:0%;border-radius:3px;}
+/* Gesture cursor — follows index finger tip */
+#cursor{
+  position:fixed;z-index:19;pointer-events:none;
+  width:24px;height:24px;border-radius:50%;
+  border:2px solid #00ffcc;
+  box-shadow:0 0 12px rgba(0,255,204,0.6);
+  transform:translate(-50%,-50%);
+  transition:background .1s, transform .05s;
+  display:none;
+}
+#cursor.pinch{
+  background:rgba(0,255,204,0.35);
+  transform:translate(-50%,-50%) scale(0.7);
+  box-shadow:0 0 20px rgba(0,255,204,0.9);
+}
 
-/* Flash */
-#flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;font-size:20px;font-weight:bold;letter-spacing:3px;opacity:0;transition:opacity .15s;}
+/* Hold progress arc around cursor */
+#holdring{
+  position:fixed;z-index:18;pointer-events:none;
+  transform:translate(-50%,-50%);
+  display:none;
+}
+
+/* File pick overlay (gesture-driven) */
+#filepick{
+  position:fixed;inset:0;z-index:30;
+  background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+}
+#filepick.show{display:flex;}
+#filepick-title{font-size:14px;color:#00ffcc;letter-spacing:4px;}
+#filepick-sub{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:2px;text-align:center;line-height:2;}
+#filepick-btn{
+  background:rgba(0,255,204,0.12);border:1.5px solid rgba(0,255,204,0.5);
+  color:#00ffcc;border-radius:30px;padding:14px 32px;
+  font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;
+  font-family:'Courier New',monospace;
+}
+#file-input{display:none;}
+
+/* File list overlay (gesture navigation) */
+#filelist-overlay{
+  position:fixed;inset:0;z-index:30;
+  background:rgba(0,0,0,0.75);backdrop-filter:blur(10px);
+  display:none;flex-direction:column;
+}
+#filelist-overlay.show{display:flex;}
+#fl-header{
+  padding:16px 18px 12px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  font-size:12px;color:#00ffcc;letter-spacing:3px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+#fl-hint{font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;}
+#fl-items{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0;}
+#fl-items::-webkit-scrollbar{display:none;}
+.fl-item{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.05);
+  transition:background .15s;position:relative;overflow:hidden;
+}
+.fl-item.hover{background:rgba(0,255,204,0.08);border-left:2px solid rgba(0,255,204,0.6);}
+.fl-item.selected{background:rgba(0,255,204,0.15);border-left:2px solid #00ffcc;}
+.fl-icon{font-size:22px;flex-shrink:0;}
+.fl-name{flex:1;font-size:13px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Dwell fill bar inside list item */
+.fl-dwell{
+  position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:rgba(0,255,204,0.12);transition:width .05s linear;
+  pointer-events:none;
+}
+
+/* Flash message */
+#flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:40;pointer-events:none;font-size:18px;font-weight:bold;letter-spacing:3px;
+  opacity:0;transition:opacity .15s;text-align:center;line-height:1.6;}
 #flash.show{opacity:1;}
 
+/* Hints bottom */
+#hints{position:fixed;bottom:0;left:0;right:0;z-index:20;
+  padding:10px 10px 16px;
+  background:linear-gradient(0deg,rgba(0,0,0,.8)0%,transparent 100%);
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none;}
+.h{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,.5);}
+
 /* Loader */
-#loader{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
+#loader{position:fixed;inset:0;z-index:100;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #lt{font-size:24px;font-weight:bold;color:#00ffcc;letter-spacing:6px;text-shadow:0 0 30px #00ffcc;}
 #ls{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:3px;}
 #lb-o{width:200px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 #lb-i{height:100%;width:0%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;transition:width .3s;}
 #lm{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;text-align:center;padding:0 24px;min-height:28px;}
-#retry-btn{display:none;background:#00ffcc;color:#000;border:none;padding:12px 28px;font-size:13px;font-weight:bold;letter-spacing:3px;border-radius:30px;cursor:pointer;font-family:'Courier New',monospace;}
-.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:15;background:linear-gradient(90deg,transparent,rgba(0,255,204,.25),transparent);animation:scan 4s linear infinite;pointer-events:none;}
+#retry-btn{display:none;background:#00ffcc;color:#000;border:none;padding:12px 28px;
+  font-size:13px;font-weight:bold;letter-spacing:3px;border-radius:30px;cursor:pointer;font-family:'Courier New',monospace;}
+.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:15;
+  background:linear-gradient(90deg,transparent,rgba(0,255,204,.25),transparent);
+  animation:scan 4s linear infinite;pointer-events:none;}
 @keyframes scan{to{top:100vh;}}
 </style>
 </head>
@@ -129,192 +144,329 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 
 <div id="loader">
   <div id="lt">AR HAND</div>
-  <div id="ls">FILE PLAYER</div>
+  <div id="ls">SPATIAL PLAYER</div>
   <div id="lb-o"><div id="lb-i"></div></div>
   <div id="lm">Загрузка…</div>
   <button id="retry-btn" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
 </div>
 
+<!-- Camera feed -->
 <video id="vid" playsinline autoplay muted></video>
+
+<!-- AR world: video panels rendered here -->
+<canvas id="worldcv"></canvas>
+
+<!-- Hand skeleton canvas -->
 <canvas id="cv"></canvas>
+
 <div class="scanline"></div>
 
-<!-- AR File Player Window -->
-<div id="arwin">
-  <div id="titlebar">
-    <div class="tdot r" id="tbtn-close"></div>
-    <div class="tdot y"></div>
-    <div class="tdot g"></div>
-    <div id="titlelabel">◈ AR FILE PLAYER</div>
-  </div>
+<!-- Gesture cursor -->
+<div id="cursor"></div>
+<svg id="holdring" width="60" height="60" viewBox="0 0 60 60">
+  <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(0,255,204,0.2)" stroke-width="2"/>
+  <circle id="holdring-arc" cx="30" cy="30" r="26" fill="none" stroke="#00ffcc" stroke-width="2.5"
+    stroke-linecap="round" stroke-dasharray="163" stroke-dashoffset="163"
+    transform="rotate(-90 30 30)" style="transition:stroke-dashoffset .05s;"/>
+</svg>
 
-  <div id="mediaplayer">
-    <video id="playervid" controls playsinline></video>
-  </div>
-
-  <div id="filepanel">
-    <div id="pick-btn-wrap">
-      <button id="pick-btn" onclick="document.getElementById('file-input').click()">
-        ＋ ВЫБРАТЬ ФАЙЛЫ
-      </button>
-      <div id="pick-hint">видео с телефона • mp4, mov, mkv…</div>
-    </div>
-    <div id="filelist"></div>
-  </div>
-
-  <!-- Resize handle -->
-  <div id="reshandle">
-    <svg width="14" height="14" viewBox="0 0 14 14">
-      <path d="M2 12L12 2M7 12L12 7" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
-  </div>
-
-  <input id="file-input" type="file" accept="video/*,audio/*" multiple>
-</div>
-
+<!-- HUD -->
 <div id="hud">
   <div id="logo">AR·HAND</div>
   <div id="srow"><div id="dot"></div><span id="stxt">СТАРТ</span></div>
 </div>
+<div id="modeindicator">НАВЕДИ РУКУ</div>
+
+<!-- Hints -->
 <div id="hints">
-  <div class="h">✌️ держи → открыть плеер</div>
-  <div class="h">✊ держи → закрыть</div>
-  <div class="h">тяни заголовок → двигать</div>
-  <div class="h">тяни уголок → размер</div>
+  <div class="h">✌️ держи → открыть файлы</div>
+  <div class="h">☝️ навести → выбрать</div>
+  <div class="h">✊ держи → пауза/закрыть</div>
 </div>
-<div id="holdbar"><div id="holdtrack"><div id="holdfill"></div></div></div>
+
+<!-- File pick screen -->
+<div id="filepick">
+  <div id="filepick-title">◈ AR FILE PLAYER</div>
+  <div id="filepick-sub">Выбери видео с телефона.<br>Оно появится в твоей комнате.</div>
+  <button id="filepick-btn" onclick="document.getElementById('file-input').click()">+ ВЫБРАТЬ ВИДЕО</button>
+  <input id="file-input" type="file" accept="video/*,audio/*" multiple>
+</div>
+
+<!-- File list (gesture navigation) -->
+<div id="filelist-overlay">
+  <div id="fl-header">
+    <span>◈ ВЫБЕРИ ВИДЕО</span>
+    <span id="fl-hint">наведи ☝️ и держи 1 сек</span>
+  </div>
+  <div id="fl-items"></div>
+</div>
+
+<!-- Flash -->
 <div id="flash"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 <script>
-// ─── File handling ────────────────────────────────────────────────────────────
-var files = []; // {name, url, type}
-var currentIdx = -1;
+// ═══════════════════════════════════════════════════════════════════
+// AR SPATIAL VIDEO PLAYER
+// Videos are anchored in world space using deviceorientation.
+// The "world canvas" renders the video panel offset by gyro delta.
+// ═══════════════════════════════════════════════════════════════════
 
-document.getElementById('file-input').addEventListener('change', function(e){
-  var newFiles = Array.from(e.target.files);
-  newFiles.forEach(function(f){
-    var url = URL.createObjectURL(f);
-    var type = f.type.startsWith('audio') ? 'audio' : 'video';
-    files.push({name: f.name, url: url, type: type});
-  });
-  renderFileList();
-  if(files.length === 1) playFile(0); // auto-play first
-  this.value = '';
-});
+// ── DOM refs ──────────────────────────────────────────────────────
+var camvid   = document.getElementById('vid');
+var worldCv  = document.getElementById('worldcv');
+var wctx     = worldCv.getContext('2d');
+var cv       = document.getElementById('cv');
+var ctx      = cv.getContext('2d');
+var cursor   = document.getElementById('cursor');
+var holdring = document.getElementById('holdring');
+var holdArc  = document.getElementById('holdring-arc');
+var dot      = document.getElementById('dot');
+var stxt     = document.getElementById('stxt');
+var modeInd  = document.getElementById('modeindicator');
 
-function renderFileList(){
-  var list = document.getElementById('filelist');
-  list.innerHTML = '';
-  files.forEach(function(f, i){
-    var item = document.createElement('div');
-    item.className = 'fitem' + (i === currentIdx ? ' playing' : '');
-    item.innerHTML =
-      '<div class="ficon">' + (f.type==='audio'?'🎵':'🎬') + '</div>' +
-      '<div class="fname">' + escHtml(f.name) + '</div>';
-    item.addEventListener('click', function(){ playFile(i); });
-    list.appendChild(item);
-  });
+// ── Resize canvases ───────────────────────────────────────────────
+function resize(){
+  cv.width = worldCv.width = window.innerWidth;
+  cv.height= worldCv.height= window.innerHeight;
 }
+window.addEventListener('resize', resize); resize();
 
-function playFile(idx){
-  if(idx < 0 || idx >= files.length) return;
-  currentIdx = idx;
-  var f = files[idx];
-  var pv = document.getElementById('playervid');
-  var mp = document.getElementById('mediaplayer');
-  pv.src = f.url;
-  pv.load();
-  pv.play().catch(function(){});
-  mp.style.display = 'block';
-  document.getElementById('titlelabel').textContent = f.name;
-  renderFileList();
-}
-
-function escHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ─── AR window state ──────────────────────────────────────────────────────────
-var arwin = document.getElementById('arwin');
-var arX = 0, arY = 0, arW = 0;
-var arOpen = false;
-
-function openAR(){
-  arW = Math.min(window.innerWidth * 0.9, 420);
-  arX = (window.innerWidth - arW) / 2;
-  arY = window.innerHeight * 0.1;
-  applyPos();
-  arwin.style.width = arW + 'px';
-  arwin.classList.add('show');
-  arOpen = true;
-  document.getElementById('hints').classList.add('hidden');
-  showFlash('◈ ФАЙЛЫ','#00ffcc');
-}
-function closeAR(){
-  arwin.classList.remove('show');
-  document.getElementById('playervid').pause();
-  arOpen = false;
-  document.getElementById('hints').classList.remove('hidden');
-  showFlash('✕ ЗАКРЫТО','#00ffcc');
-}
-function applyPos(){
-  arwin.style.left  = Math.round(arX) + 'px';
-  arwin.style.top   = Math.round(arY) + 'px';
-  arwin.style.width = Math.round(arW) + 'px';
-}
-
-document.getElementById('tbtn-close').addEventListener('click', closeAR);
-
-// ─── Touch drag (titlebar) ────────────────────────────────────────────────────
-var tb = document.getElementById('titlebar');
-var dragOn=false, dTX=0, dTY=0, dOX=0, dOY=0;
-
-tb.addEventListener('touchstart', function(e){
-  e.preventDefault();
-  dragOn=true; dTX=e.touches[0].clientX; dTY=e.touches[0].clientY; dOX=arX; dOY=arY;
-  arwin.classList.add('moving');
-},{passive:false});
-document.addEventListener('touchmove', function(e){
-  if(!dragOn) return; e.preventDefault();
-  arX = dOX + (e.touches[0].clientX - dTX);
-  arY = dOY + (e.touches[0].clientY - dTY);
-  arX = Math.max(-arW*0.6, Math.min(window.innerWidth - arW*0.4, arX));
-  arY = Math.max(0, Math.min(window.innerHeight - 50, arY));
-  applyPos();
-},{passive:false});
-document.addEventListener('touchend', function(){ dragOn=false; arwin.classList.remove('moving'); });
-
-// ─── Touch resize (corner handle) ────────────────────────────────────────────
-var rh = document.getElementById('reshandle');
-var resOn=false, rSX=0, rOW=0;
-rh.addEventListener('touchstart', function(e){
-  e.preventDefault(); e.stopPropagation();
-  resOn=true; rSX=e.touches[0].clientX; rOW=arW;
-  arwin.classList.add('moving');
-},{passive:false});
-document.addEventListener('touchmove', function(e){
-  if(!resOn) return; e.preventDefault();
-  arW = Math.max(220, Math.min(window.innerWidth*0.98, rOW + (e.touches[0].clientX - rSX)));
-  applyPos();
-},{passive:false});
-document.addEventListener('touchend', function(){ resOn=false; arwin.classList.remove('moving'); });
-
-// ─── Flash ────────────────────────────────────────────────────────────────────
+// ── Flash ─────────────────────────────────────────────────────────
 var flt;
 function showFlash(txt,col){
   var f=document.getElementById('flash');
-  f.textContent=txt; f.style.color=col; f.style.textShadow='0 0 24px '+col;
+  f.innerHTML=txt; f.style.color=col||'#00ffcc';
+  f.style.textShadow='0 0 24px '+(col||'#00ffcc');
   f.classList.add('show'); clearTimeout(flt);
-  flt=setTimeout(function(){f.classList.remove('show');},1000);
+  flt=setTimeout(function(){f.classList.remove('show');},1200);
 }
 
-// ─── Canvas ───────────────────────────────────────────────────────────────────
-var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
-function resize(){ cv.width=window.innerWidth; cv.height=window.innerHeight; }
-window.addEventListener('resize',resize); resize();
+// ── Gyroscope / orientation ───────────────────────────────────────
+// We store the "anchor" orientation when video is placed.
+// Each frame: panelScreenX = anchorScreenX + (currentYaw - anchorYaw)*scale
+// This makes the panel "stay" in world space as phone rotates.
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+var gyroSupported = false;
+var currentAlpha=0, currentBeta=0, currentGamma=0; // degrees
+var anchorAlpha=0,  anchorBeta=0;                   // where panel was placed
+
+function onOrientation(e){
+  if(e.alpha === null) return;
+  gyroSupported = true;
+  currentAlpha = e.alpha;  // yaw  0-360
+  currentBeta  = e.beta;   // pitch -180..180
+  currentGamma = e.gamma;  // roll -90..90
+}
+window.addEventListener('deviceorientation', onOrientation);
+
+// Request permission on iOS 13+
+function requestGyro(){
+  if(typeof DeviceOrientationEvent !== 'undefined' &&
+     typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().catch(function(){});
+  }
+}
+
+// ── AR Panel state ────────────────────────────────────────────────
+// The video panel is positioned in "anchor" space.
+// anchorX, anchorY = screen position when placed (normalized 0..1)
+// anchorAlpha/Beta = gyro at placement time
+
+var panel = {
+  active: false,
+  video: null,       // HTMLVideoElement
+  anchorX: 0.5,      // normalized screen center
+  anchorY: 0.4,
+  anchorAlpha: 0,
+  anchorBeta: 0,
+  width: 0,          // px
+  height: 0,         // px
+  opacity: 1,
+  label: ''
+};
+
+// Scale: degrees → pixels. Roughly 3px per degree works well.
+var DEG_SCALE = 5;
+
+function placePanel(videoEl, label){
+  panel.active   = true;
+  panel.video    = videoEl;
+  panel.label    = label;
+  panel.width    = Math.min(window.innerWidth * 0.85, 500);
+  panel.height   = panel.width * 9/16;
+  panel.anchorX  = 0.5;
+  panel.anchorY  = 0.42;
+  panel.anchorAlpha = currentAlpha;
+  panel.anchorBeta  = currentBeta;
+  videoEl.play().catch(function(){});
+}
+
+function getPanelScreenPos(){
+  // Angular delta from anchor
+  var dAlpha = angleDiff(currentAlpha, panel.anchorAlpha);
+  var dBeta  = currentBeta - panel.anchorBeta;
+
+  var cx = panel.anchorX * window.innerWidth  - dAlpha * DEG_SCALE;
+  var cy = panel.anchorY * window.innerHeight + dBeta  * DEG_SCALE;
+  return {x: cx, y: cy};
+}
+
+// Handle 0/360 wraparound for alpha
+function angleDiff(a, b){
+  var d = a - b;
+  if(d > 180)  d -= 360;
+  if(d < -180) d += 360;
+  return d;
+}
+
+// ── Draw AR world ─────────────────────────────────────────────────
+function drawWorld(){
+  wctx.clearRect(0,0,worldCv.width,worldCv.height);
+  if(!panel.active || !panel.video) return;
+
+  var pos  = getPanelScreenPos();
+  var pw   = panel.width;
+  var ph   = panel.height;
+  var px   = pos.x - pw/2;
+  var py   = pos.y - ph/2;
+
+  // Shadow / depth cue
+  wctx.save();
+  wctx.shadowColor='rgba(0,0,0,0.8)';
+  wctx.shadowBlur=40;
+  wctx.fillStyle='rgba(0,0,0,0.01)';
+  wctx.beginPath();
+  roundRect(wctx, px-4, py-4, pw+8, ph+8, 14);
+  wctx.fill();
+  wctx.restore();
+
+  // Draw video frame
+  wctx.save();
+  wctx.globalAlpha = panel.opacity;
+  // Clip to rounded rect
+  wctx.beginPath();
+  roundRect(wctx, px, py, pw, ph, 12);
+  wctx.clip();
+  try{
+    if(panel.video.readyState >= 2){
+      wctx.drawImage(panel.video, px, py, pw, ph);
+    } else {
+      wctx.fillStyle='#111';
+      wctx.fillRect(px,py,pw,ph);
+    }
+  }catch(e){}
+  wctx.restore();
+
+  // Border glow
+  wctx.save();
+  wctx.globalAlpha = panel.opacity;
+  wctx.strokeStyle='rgba(0,255,204,0.35)';
+  wctx.lineWidth=1.5;
+  wctx.shadowColor='rgba(0,255,204,0.4)';
+  wctx.shadowBlur=8;
+  wctx.beginPath();
+  roundRect(wctx, px, py, pw, ph, 12);
+  wctx.stroke();
+  wctx.restore();
+
+  // Label bar at top
+  wctx.save();
+  wctx.globalAlpha = panel.opacity * 0.85;
+  wctx.fillStyle='rgba(0,0,0,0.7)';
+  wctx.beginPath();
+  roundRect(wctx, px, py, pw, 28, {tl:12,tr:12,bl:0,br:0});
+  wctx.fill();
+  wctx.fillStyle='rgba(255,255,255,0.55)';
+  wctx.font='11px Courier New';
+  wctx.textBaseline='middle';
+  wctx.fillText('▶ '+panel.label.slice(0,42), px+12, py+14);
+  wctx.restore();
+
+  // Gyro not available fallback indicator
+  if(!gyroSupported){
+    wctx.save();
+    wctx.globalAlpha=0.5;
+    wctx.fillStyle='rgba(255,200,0,0.15)';
+    wctx.font='10px Courier New';
+    wctx.fillStyle='rgba(255,200,0,0.6)';
+    wctx.textAlign='center';
+    wctx.fillText('⚠ Гироскоп недоступен — двигай устройство', pos.x, py+ph+18);
+    wctx.restore();
+  }
+}
+
+function roundRect(c, x, y, w, h, r){
+  if(typeof r === 'number') r={tl:r,tr:r,bl:r,br:r};
+  c.moveTo(x+r.tl, y);
+  c.lineTo(x+w-r.tr, y); c.arcTo(x+w,y, x+w,y+r.tr, r.tr);
+  c.lineTo(x+w, y+h-r.br); c.arcTo(x+w,y+h, x+w-r.br,y+h, r.br);
+  c.lineTo(x+r.bl, y+h); c.arcTo(x,y+h, x,y+h-r.bl, r.bl);
+  c.lineTo(x, y+r.tl); c.arcTo(x,y, x+r.tl,y, r.tl);
+  c.closePath();
+}
+
+// ── Files ─────────────────────────────────────────────────────────
+var files=[];
+var currentMode = 'idle'; // idle | filelist | playing
+
+document.getElementById('file-input').addEventListener('change',function(e){
+  Array.from(e.target.files).forEach(function(f){
+    var url=URL.createObjectURL(f);
+    files.push({name:f.name, url:url});
+  });
+  this.value='';
+  if(files.length>0) showFileList();
+});
+
+function showFilePick(){
+  currentMode='pick';
+  document.getElementById('filepick').classList.add('show');
+  modeInd.textContent='ВЫБЕРИ ФАЙЛ';
+}
+
+function showFileList(){
+  document.getElementById('filepick').classList.remove('show');
+  document.getElementById('filelist-overlay').classList.add('show');
+  currentMode='filelist';
+  modeInd.textContent='ВЫБЕРИ ВИДЕО ☝️';
+  renderFileList();
+}
+
+function renderFileList(){
+  var el=document.getElementById('fl-items');
+  el.innerHTML='';
+  files.forEach(function(f,i){
+    var item=document.createElement('div');
+    item.className='fl-item';
+    item.dataset.idx=i;
+    item.innerHTML=
+      '<div class="fl-dwell"></div>'+
+      '<div class="fl-icon">🎬</div>'+
+      '<div class="fl-name">'+escHtml(f.name)+'</div>';
+    el.appendChild(item);
+  });
+}
+
+function selectFile(idx){
+  var f=files[idx];
+  var videoEl=document.createElement('video');
+  videoEl.src=f.url;
+  videoEl.loop=true;
+  videoEl.muted=false;
+  videoEl.preload='auto';
+  videoEl.load();
+  document.getElementById('filelist-overlay').classList.remove('show');
+  currentMode='playing';
+  modeInd.textContent='✊ держи → пауза';
+  requestGyro();
+  placePanel(videoEl, f.name);
+  showFlash('▶ '+f.name.slice(0,24),'#00ffcc');
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Skeleton drawing ───────────────────────────────────────────────
 var FC=['#ff9933','#00ffcc','#33ddff','#bb66ff','#ff55aa'];
 var FSEG=[
   {s:[[0,1],[1,2],[2,3],[3,4]],c:'#ff9933'},
@@ -324,36 +476,32 @@ var FSEG=[
   {s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'}
 ];
 var PALM=[[0,17],[5,9],[9,13],[13,17]];
-var TIPS=[4,8,12,16,20], MCPS=[1,5,9,13,17];
+var TIPS=[4,8,12,16,20],MCPS=[1,5,9,13,17];
 
 function pt(lms,i){return{x:lms[i].x*cv.width,y:lms[i].y*cv.height};}
 function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
 function drawHand(lms,gest){
   ctx.clearRect(0,0,cv.width,cv.height);
-  // glow blobs
-  ctx.save(); ctx.globalAlpha=0.12; ctx.lineCap='round';
+  // glow
+  ctx.save();ctx.globalAlpha=0.11;ctx.lineCap='round';
   FSEG.forEach(function(f){
-    ctx.strokeStyle=f.c; ctx.lineWidth=14; ctx.shadowColor=f.c; ctx.shadowBlur=24;
+    ctx.strokeStyle=f.c;ctx.lineWidth=13;ctx.shadowColor=f.c;ctx.shadowBlur=22;
     f.s.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
-  }); ctx.restore();
+  });ctx.restore();
   // palm
-  ctx.save(); ctx.lineCap='round';
-  PALM.forEach(function(ab){
-    var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
-    ctx.strokeStyle='rgba(0,255,200,0.18)';ctx.lineWidth=0.7;ctx.shadowBlur=0;
-    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
-  });
+  ctx.save();ctx.lineCap='round';
+  PALM.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.strokeStyle='rgba(0,255,200,0.16)';ctx.lineWidth=0.7;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
   // bones
   FSEG.forEach(function(f){
     f.s.forEach(function(ab){
       var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
-      ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=1.3;ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.3;ctx.shadowBlur=0;
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
       ctx.strokeStyle=f.c;ctx.lineWidth=0.75;ctx.shadowColor=f.c;ctx.shadowBlur=5;
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
     });
-  }); ctx.restore();
+  });ctx.restore();
   // joints
   ctx.save();
   for(var i=0;i<21;i++){
@@ -377,19 +525,12 @@ function drawHand(lms,gest){
       ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
     }
   }
-  // pinch dash
-  if(gest==='PINCH'){
-    var t=pt(lms,4),ix=pt(lms,8);
-    ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
-    ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(ix.x,ix.y);ctx.stroke();
-  }
   ctx.restore();
 }
 
-// ─── Gesture ──────────────────────────────────────────────────────────────────
+// ── Gesture recognition ───────────────────────────────────────────
 function fingerUp(lms,tip,dip,mcp){
-  var w=lms[0];
-  var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};
+  var w=lms[0];var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};
   return dw(lms[tip])>dw(lms[dip])&&dw(lms[tip])>dw(lms[mcp]);
 }
 function getGest(lms){
@@ -403,31 +544,92 @@ function getGest(lms){
   return 'OTHER';
 }
 
-// ─── Hold ─────────────────────────────────────────────────────────────────────
-var holdG='',holdStart=0,lastTrig=0,HOLD_MS=700;
-var hb=document.getElementById('holdbar'),hf=document.getElementById('holdfill');
+// ── Dwell selection (hover over file item) ────────────────────────
+var dwellTarget=null, dwellStart=0, DWELL_MS=900;
 
-function tryTrigger(g){
-  var now=Date.now();
-  if(g!==holdG){holdG=g;holdStart=now;hb.style.display='none';return;}
-  var needHold=(g==='PEACE'&&!arOpen)||(g==='FIST'&&arOpen);
-  if(needHold){
-    var pct=Math.min(1,(now-holdStart)/HOLD_MS);
-    hb.style.display='block';
-    var col=g==='PEACE'?'#00ffcc':'#ff6633';
-    hf.style.background=col;hf.style.boxShadow='0 0 8px '+col;
-    hf.style.width=(pct*100)+'%';
-  } else {hb.style.display='none';}
-  if(now-holdStart>=HOLD_MS&&now-lastTrig>1500){
-    lastTrig=now;holdStart=now;hb.style.display='none';
-    if(g==='PEACE'&&!arOpen) openAR();
-    if(g==='FIST'&&arOpen)   closeAR();
+function updateDwell(fingerX, fingerY){
+  if(currentMode!=='filelist') return;
+  var items=document.querySelectorAll('.fl-item');
+  var hit=null;
+  items.forEach(function(item){
+    var r=item.getBoundingClientRect();
+    if(fingerX>=r.left&&fingerX<=r.right&&fingerY>=r.top&&fingerY<=r.bottom) hit=item;
+  });
+
+  if(hit){
+    // highlight
+    items.forEach(function(i){i.classList.remove('hover');i.querySelector('.fl-dwell').style.width='0%';});
+    hit.classList.add('hover');
+    if(dwellTarget!==hit){dwellTarget=hit;dwellStart=Date.now();}
+    var pct=Math.min(1,(Date.now()-dwellStart)/DWELL_MS);
+    hit.querySelector('.fl-dwell').style.width=(pct*100)+'%';
+    if(pct>=1){
+      dwellTarget=null;
+      selectFile(parseInt(hit.dataset.idx));
+    }
+  } else {
+    if(dwellTarget){
+      dwellTarget.querySelector('.fl-dwell').style.width='0%';
+      dwellTarget.classList.remove('hover');
+      dwellTarget=null;
+    }
   }
 }
 
-// ─── MediaPipe ────────────────────────────────────────────────────────────────
-var camvid=document.getElementById('vid');
-var dot=document.getElementById('dot'),stxt=document.getElementById('stxt');
+// ── Hold gesture for mode switches ────────────────────────────────
+var holdG='',holdStart=0,lastTrig=0,HOLD_MS=800;
+
+function tryHold(g, fingerX, fingerY){
+  var now=Date.now();
+  if(g!==holdG){holdG=g;holdStart=now;hideRing();return;}
+  var held=now-holdStart;
+
+  // Show ring around cursor
+  if((g==='PEACE'||g==='FIST')&&held>150){
+    var pct=Math.min(1,held/HOLD_MS);
+    showRing(fingerX,fingerY,pct);
+  } else {
+    hideRing();
+  }
+
+  if(held>=HOLD_MS&&now-lastTrig>1500){
+    lastTrig=now;holdStart=now;hideRing();
+    if(g==='PEACE'){
+      if(currentMode==='idle') showFilePick();
+      else if(currentMode==='filelist') showFilePick();
+      else if(currentMode==='playing'){
+        // Re-anchor panel to current position (move video)
+        panel.anchorAlpha=currentAlpha;
+        panel.anchorBeta=currentBeta;
+        showFlash('📌 ЗАКРЕПЛЕНО','#00ffcc');
+      }
+    }
+    if(g==='FIST'){
+      if(currentMode==='filelist'){
+        document.getElementById('filelist-overlay').classList.remove('show');
+        currentMode='idle';
+        modeInd.textContent='НАВЕДИ РУКУ';
+      } else if(currentMode==='playing'){
+        if(panel.video){
+          if(panel.video.paused) panel.video.play();
+          else panel.video.pause();
+          showFlash(panel.video.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc');
+        }
+      }
+    }
+  }
+}
+
+function showRing(x,y,pct){
+  holdring.style.display='block';
+  holdring.style.left=x+'px';
+  holdring.style.top=y+'px';
+  var circ=163;
+  holdArc.style.strokeDashoffset=(circ*(1-pct))+'';
+}
+function hideRing(){holdring.style.display='none';}
+
+// ── MediaPipe loop ────────────────────────────────────────────────
 var hands;
 
 function initHands(){
@@ -437,17 +639,37 @@ function initHands(){
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
   hands.onResults(function(res){
     ctx.clearRect(0,0,cv.width,cv.height);
+    drawWorld(); // always redraw world (gyro offset changes)
+
     if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){
       var lms=res.multiHandLandmarks[0];
       var g=getGest(lms);
       drawHand(lms,g);
-      tryTrigger(g);
-      dot.className='on';stxt.textContent=g;
+
+      // Index fingertip screen position
+      var tip=pt(lms,8);
+      cursor.style.display='block';
+      cursor.style.left=tip.x+'px';
+      cursor.style.top=tip.y+'px';
+      cursor.className=g==='PINCH'?'pinch':'';
+
+      updateDwell(tip.x,tip.y);
+      tryHold(g,tip.x,tip.y);
+      dot.className='on'; stxt.textContent=g;
     } else {
-      dot.className='';stxt.textContent='НЕТ РУКИ';
-      holdG='';hb.style.display='none';
+      cursor.style.display='none'; hideRing();
+      dot.className=''; stxt.textContent='НЕТ РУКИ';
+      holdG='';
+      if(dwellTarget){dwellTarget.querySelector('.fl-dwell').style.width='0%';dwellTarget=null;}
+      // Still redraw world even without hand
     }
   });
+}
+
+// Also redraw world on animation frame for smooth gyro
+function worldLoop(){
+  requestAnimationFrame(worldLoop);
+  if(panel.active) drawWorld();
 }
 
 async function startCamera(){
@@ -466,19 +688,21 @@ async function startCamera(){
   throw new Error('Камера недоступна');
 }
 
-function startLoop(){
+function startHandLoop(){
   var lastT=0;
   function frame(ts){
     requestAnimationFrame(frame);
     if(camvid.readyState<2||camvid.paused)return;
-    if(ts-lastT<50)return; // 20fps
+    if(ts-lastT<50)return;
     lastT=ts;
     hands.send({image:camvid}).catch(function(){});
   }
   requestAnimationFrame(frame);
 }
 
-var loader=document.getElementById('loader'),lbI=document.getElementById('lb-i'),lmEl=document.getElementById('lm');
+// ── Boot ──────────────────────────────────────────────────────────
+var loader=document.getElementById('loader');
+var lbI=document.getElementById('lb-i'),lmEl=document.getElementById('lm');
 function setLoad(p,m){lbI.style.width=p+'%';lmEl.textContent=m;}
 
 (async function(){
@@ -490,7 +714,13 @@ function setLoad(p,m){lbI.style.width=p+'%';lmEl.textContent=m;}
     setLoad(80,'Включение камеры…');
     await startCamera();
     setLoad(100,'Готово!');
-    setTimeout(function(){loader.style.display='none';startLoop();},300);
+    setTimeout(function(){
+      loader.style.display='none';
+      worldLoop();
+      startHandLoop();
+      // Show file pick immediately
+      setTimeout(showFilePick, 600);
+    },300);
   }catch(err){
     setLoad(0,'Ошибка: '+err.message);
     lmEl.style.color='#ff6666';
