@@ -9,39 +9,52 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
+#cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+#cv{position:fixed;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;}
 
-/* Слои (z-index):
-   1 = камера (фон)
-   2 = Three.js (прозрачный, видео в 3D)
-   3 = скелет руки
-   4+ = UI
-*/
-#cam   {position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;}
-#gl    {position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
-#cv    {position:fixed;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;}
-#cursor{position:fixed;z-index:4;pointer-events:none;width:20px;height:20px;border-radius:50%;border:2px solid #00ffcc;box-shadow:0 0 8px rgba(0,255,204,.8);transform:translate(-50%,-50%);display:none;}
+#cursor{position:fixed;z-index:4;pointer-events:none;width:20px;height:20px;border-radius:50%;
+  border:2px solid #00ffcc;box-shadow:0 0 8px rgba(0,255,204,.8);
+  transform:translate(-50%,-50%);display:none;}
+#cursor.pinch{border-color:#ff4444;transform:translate(-50%,-50%) scale(0.65);}
 #holdring{position:fixed;z-index:4;pointer-events:none;transform:translate(-50%,-50%);display:none;}
 
-#hud{position:fixed;top:0;left:0;right:0;z-index:5;padding:12px 16px 8px;background:linear-gradient(180deg,rgba(0,0,0,.75)0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
+#hud{position:fixed;top:0;left:0;right:0;z-index:5;padding:12px 16px 8px;
+  background:linear-gradient(180deg,rgba(0,0,0,.75)0%,transparent 100%);
+  display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
 #logo{color:#00ffcc;font-size:12px;letter-spacing:4px;font-weight:bold;}
 #srow{display:flex;align-items:center;gap:7px;}
 #dot{width:8px;height:8px;border-radius:50%;background:#444;}
 #dot.on{background:#00ffcc;box-shadow:0 0 7px #00ffcc;}
 #stxt{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;}
-#modebar{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:5;background:rgba(0,0,0,.6);border:1px solid rgba(0,255,204,.3);border-radius:20px;padding:5px 14px;font-size:11px;color:#00ffcc;letter-spacing:2px;pointer-events:none;white-space:nowrap;}
 
-#hints{position:fixed;bottom:0;left:0;right:0;z-index:5;padding:10px 10px 16px;background:linear-gradient(0deg,rgba(0,0,0,.75)0%,transparent 100%);display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none;transition:opacity .3s;}
+#modebar{position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:5;
+  background:rgba(0,0,0,.6);border:1px solid rgba(0,255,204,.3);
+  border-radius:20px;padding:5px 14px;font-size:11px;color:#00ffcc;
+  letter-spacing:2px;pointer-events:none;white-space:nowrap;}
+
+/* Прогресс действия */
+#actbar{position:fixed;top:84px;left:50%;transform:translateX(-50%);
+  width:140px;height:3px;background:rgba(255,255,255,.08);border-radius:3px;
+  overflow:hidden;z-index:5;pointer-events:none;opacity:0;transition:opacity .1s;}
+#actfill{height:100%;width:0%;border-radius:3px;}
+#actbar.show{opacity:1;}
+
+#hints{position:fixed;bottom:0;left:0;right:0;z-index:5;padding:10px 10px 16px;
+  background:linear-gradient(0deg,rgba(0,0,0,.75)0%,transparent 100%);
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none;transition:opacity .3s;}
 #hints.hidden{opacity:0;}
 .h{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,.5);}
 
-#holdbar{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:55vw;z-index:5;pointer-events:none;display:none;}
-#holdtrack{height:4px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
-#holdfill{height:100%;width:0%;border-radius:3px;}
-
-#flash{position:fixed;top:48%;left:50%;transform:translate(-50%,-50%);z-index:10;pointer-events:none;font-size:16px;font-weight:bold;letter-spacing:2px;opacity:0;transition:opacity .15s;text-align:center;line-height:1.8;padding:0 20px;}
+#flash{position:fixed;top:46%;left:50%;transform:translate(-50%,-50%);z-index:10;
+  pointer-events:none;font-size:16px;font-weight:bold;letter-spacing:2px;
+  opacity:0;transition:opacity .15s;text-align:center;line-height:1.8;padding:0 20px;}
 #flash.show{opacity:1;}
 
-#scalebadge{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;background:rgba(0,0,0,.6);border:1px solid rgba(0,255,204,.3);border-radius:10px;padding:5px 12px;font-size:12px;color:#00ffcc;opacity:0;transition:opacity .2s;letter-spacing:1px;}
+#scalebadge{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:5;
+  pointer-events:none;background:rgba(0,0,0,.6);border:1px solid rgba(255,221,0,.4);
+  border-radius:10px;padding:5px 12px;font-size:12px;color:#ffdd00;
+  opacity:0;transition:opacity .2s;letter-spacing:1px;}
 #scalebadge.show{opacity:1;}
 
 .ov{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.83);backdrop-filter:blur(12px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
@@ -50,7 +63,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 #fp-sub{font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:2;letter-spacing:1px;}
 #fp-btn{background:rgba(0,255,204,.1);border:1.5px solid rgba(0,255,204,.5);color:#00ffcc;border-radius:30px;padding:14px 32px;font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;font-family:'Courier New',monospace;}
 #file-input{display:none;}
-
 #fl-hdr{width:100%;padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#00ffcc;letter-spacing:3px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 #fl-sub{font-size:10px;color:rgba(255,255,255,.3);}
 #fl-items{width:100%;flex:1;overflow-y:auto;padding:8px 0;-webkit-overflow-scrolling:touch;}
@@ -111,19 +123,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
   <div id="srow"><div id="dot"></div><span id="stxt">…</span></div>
 </div>
 <div id="modebar">НАВЕДИ РУКУ</div>
+<div id="actbar"><div id="actfill"></div></div>
+
 <div id="hints">
   <div class="h">✌️ держи → файлы</div>
-  <div class="h">✋ ладонь → размер</div>
+  <div class="h">🤏 щипок → размер</div>
+  <div class="h">☝️ на видео → пауза</div>
   <div class="h">✌️ держи (играет) → переместить</div>
-  <div class="h">✊ держи → пауза</div>
 </div>
-<div id="holdbar"><div id="holdtrack"><div id="holdfill"></div></div></div>
 <div id="scalebadge">↔ 100%</div>
 <div id="flash"></div>
 
 <div class="ov" id="ov-pick">
   <div id="fp-title">◈ AR ВИДЕО</div>
-  <div id="fp-sub">Выбери видео.<br>Оно появится перед тобой в 3D.</div>
+  <div id="fp-sub">Выбери видео с телефона.<br>Оно появится в 3D перед тобой.</div>
   <button id="fp-btn" onclick="document.getElementById('file-input').click()">＋ ВЫБРАТЬ ВИДЕО</button>
   <input id="file-input" type="file" accept="video/*" multiple>
 </div>
@@ -139,34 +152,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 <div id="spinner"><div id="spin-r"></div><div id="spin-t">ЗАГРУЗКА…</div></div>
 
 <script>
-// ════════════════════════════════════════════════════════════════════════
-// Правильная архитектура:
-//
-// cam (video)   — задняя камера, CSS фон z=1
-// gl  (canvas)  — Three.js WebGLRenderer, alpha:true, z=2
-//                 Рендерит видео-плоскость как 3D объект в мировых координатах
-//                 Камера Three.js вращается по данным гироскопа
-// cv  (canvas)  — скелет руки 2D, z=3
-//
-// Ключевой принцип:
-// THREE.Camera ← deviceorientation (Quaternion)
-// VideoPanel   ← THREE.Mesh в мировых координатах, не двигается
-// При повороте телефона камера вращается → панель "остаётся" на месте
-// ════════════════════════════════════════════════════════════════════════
-
-var cam  = document.getElementById('cam');
-var glcv = document.getElementById('gl');
-var cv   = document.getElementById('cv');
-var ctx  = cv.getContext('2d');
-
+var cam      = document.getElementById('cam');
+var glcv     = document.getElementById('gl');
+var cv       = document.getElementById('cv');
+var ctx      = cv.getContext('2d');
 var cursor   = document.getElementById('cursor');
 var holdring = document.getElementById('holdring');
 var harc     = document.getElementById('harc');
 var dot      = document.getElementById('dot');
 var stxt     = document.getElementById('stxt');
 var modebar  = document.getElementById('modebar');
-var hb       = document.getElementById('holdbar');
-var hf       = document.getElementById('holdfill');
+var actbar   = document.getElementById('actbar');
+var actfill  = document.getElementById('actfill');
 var scalebadge = document.getElementById('scalebadge');
 var loader   = document.getElementById('loader');
 var lbI      = document.getElementById('lb-i');
@@ -176,148 +173,164 @@ var spinner  = document.getElementById('spinner');
 function setLoad(p,m){ lbI.style.width=p+'%'; lmEl.textContent=m; }
 
 function resize(){
-  cv.width  = window.innerWidth;
-  cv.height = window.innerHeight;
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
   if(renderer){
     renderer.setSize(window.innerWidth, window.innerHeight);
-    cam3.aspect = window.innerWidth / window.innerHeight;
+    cam3.aspect = window.innerWidth/window.innerHeight;
     cam3.updateProjectionMatrix();
   }
 }
 window.addEventListener('resize', resize);
 
-// ── Flash ───────────────────────────────────────────────────────────────
 var flt;
 function flash(txt,col){
   var f=document.getElementById('flash');
   f.innerHTML=txt; f.style.color=col||'#00ffcc';
   f.style.textShadow='0 0 20px '+(col||'#00ffcc');
   f.classList.add('show'); clearTimeout(flt);
-  flt=setTimeout(function(){f.classList.remove('show');},1800);
+  flt=setTimeout(function(){f.classList.remove('show');},1600);
 }
 
-// ── Three.js ─────────────────────────────────────────────────────────────
+// ── Three.js ──────────────────────────────────────────────────────────────
 var renderer, scene, cam3;
-var panel3 = null;   // THREE.Mesh — видео-плоскость
-var vtex   = null;   // THREE.VideoTexture
-var pScale = 1.0;    // масштаб панели
+var panel3=null, vtex=null, pScale=1.0;
 
 function initThree(){
-  renderer = new THREE.WebGLRenderer({ canvas:glcv, alpha:true, antialias:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0x000000, 0); // прозрачный фон
-
-  scene = new THREE.Scene();
-
-  // Камера: FOV 70°, соответствует примерно задней камере телефона
-  cam3 = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 100);
-  cam3.position.set(0, 0, 0);
+  renderer=new THREE.WebGLRenderer({canvas:glcv,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setClearColor(0x000000,0);
+  scene=new THREE.Scene();
+  cam3=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.01,100);
+  cam3.position.set(0,0,0);
   scene.add(cam3);
-  scene.add(new THREE.AmbientLight(0xffffff, 1));
+  scene.add(new THREE.AmbientLight(0xffffff,1));
 }
 
-// ── Гироскоп → Quaternion камеры ────────────────────────────────────────
-// Используем правильную конвертацию deviceorientation → THREE.Quaternion
-// Источник: https://www.w3.org/TR/orientation-event/#worked-example
+// ── Гироскоп ──────────────────────────────────────────────────────────────
+// Ключевое исправление:
+// 1. Сглаживаем RAW углы (alpha, beta, gamma) перед конвертацией
+// 2. Применяем quaternion МГНОВЕННО (без slerp) — нет задержки
+// 3. Используем маленький коэффициент сглаживания только против дрожания
 
-var Q = new THREE.Quaternion();
-var zee = new THREE.Vector3(0,0,1);
-var euler = new THREE.Euler();
-var q0 = new THREE.Quaternion();
-// Поворот системы координат экрана (portrait)
-var q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+var rawA=0,rawB=0,rawG=0;       // сырые углы
+var smA=0,smB=0,smG=0;          // сглаженные
+var gyroReady=false, gyroInit=false;
+var GYRO_LP=0.6; // low-pass коэффициент: 0=нет сглаживания, 1=заморожено
 
-var gyroReady = false;
-var targetQ   = new THREE.Quaternion();
+// Коррекция угла alpha при переходе 360→0
+function lerpAngle(cur, target, k){
+  var d=target-cur;
+  while(d>180)  d-=360;
+  while(d<-180) d+=360;
+  return cur + d*(1-k);
+}
 
 function onOrientation(e){
-  if(e.alpha === null || e.alpha === undefined) return;
-  gyroReady = true;
+  if(e.alpha===null||e.alpha===undefined) return;
+  gyroReady=true;
 
-  // Правильная конвертация по спецификации W3C
-  var alpha = THREE.MathUtils.degToRad(e.alpha); // z
-  var beta  = THREE.MathUtils.degToRad(e.beta);  // x
-  var gamma = THREE.MathUtils.degToRad(e.gamma); // y
+  if(!gyroInit){
+    // Первый кадр — инициализируем без сглаживания
+    smA=rawA=e.alpha;
+    smB=rawB=e.beta;
+    smG=rawG=e.gamma;
+    gyroInit=true;
+    return;
+  }
 
-  euler.set(beta, alpha, -gamma, 'YXZ');
-  Q.setFromEuler(euler);
-  Q.multiply(q1);
-  Q.multiply(q0.setFromAxisAngle(zee, 0)); // без поворота экрана
+  rawA=e.alpha; rawB=e.beta; rawG=e.gamma;
 
-  targetQ.copy(Q);
+  // Low-pass фильтр только для дрожания (маленький шум)
+  smA=lerpAngle(smA,rawA,GYRO_LP);
+  smB=smB*GYRO_LP+rawB*(1-GYRO_LP);
+  smG=smG*GYRO_LP+rawG*(1-GYRO_LP);
+
+  // Конвертация по W3C спецификации
+  var a=THREE.MathUtils.degToRad(smA);
+  var b=THREE.MathUtils.degToRad(smB);
+  var g=THREE.MathUtils.degToRad(smG);
+
+  var e2=new THREE.Euler(b,a,-g,'YXZ');
+  var q=new THREE.Quaternion().setFromEuler(e2);
+  // Поворот для portrait режима
+  q.multiply(new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5)));
+
+  // МГНОВЕННОЕ применение — никакого slerp!
+  cam3.quaternion.copy(q);
 }
 
-// Пробуем deviceorientationabsolute первым (точнее, без магнитного дрейфа)
-window.addEventListener('deviceorientationabsolute', onOrientation, true);
-window.addEventListener('deviceorientation',         onOrientation, true);
+window.addEventListener('deviceorientationabsolute',onOrientation,true);
+window.addEventListener('deviceorientation',onOrientation,true);
 
 function reqGyro(){
-  if(typeof DeviceOrientationEvent !== 'undefined' &&
-     typeof DeviceOrientationEvent.requestPermission === 'function'){
+  if(typeof DeviceOrientationEvent!=='undefined'&&
+     typeof DeviceOrientationEvent.requestPermission==='function'){
     DeviceOrientationEvent.requestPermission().catch(function(){});
   }
 }
 
-// ── Размещение видео-панели в 3D пространстве ───────────────────────────
+// ── Размещение панели ─────────────────────────────────────────────────────
 function placePanel(vel){
-  if(!vel || !vtex) return;
+  if(!vel||!vtex) return;
+  if(panel3){scene.remove(panel3);panel3=null;}
 
-  // Убираем старую панель
-  if(panel3){ scene.remove(panel3); panel3=null; }
+  var ar=(vel.videoWidth&&vel.videoHeight)?vel.videoWidth/vel.videoHeight:16/9;
+  var pw=1.6,ph=pw/ar;
+  var geo=new THREE.PlaneGeometry(pw,ph);
+  var mat=new THREE.MeshBasicMaterial({map:vtex,side:THREE.DoubleSide,toneMapped:false});
+  panel3=new THREE.Mesh(geo,mat);
 
-  var vw = vel.videoWidth  || 1280;
-  var vh = vel.videoHeight || 720;
-  var ar = vw / vh;
-  var pw = 1.6;          // ширина в метрах
-  var ph = pw / ar;
-
-  var geo = new THREE.PlaneGeometry(pw, ph);
-  var mat = new THREE.MeshBasicMaterial({ map:vtex, side:THREE.DoubleSide, toneMapped:false });
-  panel3  = new THREE.Mesh(geo, mat);
-
-  // Рамка
-  var eg = new THREE.EdgesGeometry(geo);
-  var em = new THREE.LineBasicMaterial({ color:0x00ffcc, transparent:true, opacity:0.45 });
-  panel3.add(new THREE.LineSegments(eg, em));
+  var eg=new THREE.EdgesGeometry(geo);
+  panel3.add(new THREE.LineSegments(eg,
+    new THREE.LineBasicMaterial({color:0x00ffcc,transparent:true,opacity:0.4})));
 
   panel3.scale.setScalar(pScale);
   scene.add(panel3);
 
-  // Позиция: 2.5м прямо перед камерой (горизонтально)
-  var dir = new THREE.Vector3(0, 0, -1);
+  // Направление: горизонтально перед камерой
+  var dir=new THREE.Vector3(0,0,-1);
   dir.applyQuaternion(cam3.quaternion);
-  dir.y = 0;                              // фиксируем высоту — не плывёт вверх
-  if(dir.lengthSq() < 0.0001) dir.set(0,0,-1);
+  dir.y=0;
+  if(dir.lengthSq()<0.0001) dir.set(0,0,-1);
   dir.normalize();
 
-  var pos = new THREE.Vector3().addScaledVector(dir, 2.5);
-  pos.y = 0;                              // на высоте 0 (уровень взгляда)
+  var pos=new THREE.Vector3().addScaledVector(dir,2.5);
+  pos.y=0;
   panel3.position.copy(pos);
+  panel3.rotation.set(0,Math.atan2(dir.x,dir.z)+Math.PI,0);
 
-  // Лицом к камере: только по Y, не заваливается
-  panel3.rotation.set(0, Math.atan2(dir.x, dir.z) + Math.PI, 0);
-
-  vel.muted = false;
-  vel.play().catch(function(){ vel.muted=true; vel.play().catch(function(){}); });
+  vel.muted=false;
+  vel.play().catch(function(){vel.muted=true;vel.play().catch(function(){});});
 }
 
-// ── Рендер-цикл ──────────────────────────────────────────────────────────
+// ── Render loop — только рендер, без slerp ────────────────────────────────
 function startRenderLoop(){
   function loop(){
     requestAnimationFrame(loop);
-    // Плавно интерполируем поворот камеры к целевому
-    if(gyroReady){
-      cam3.quaternion.slerp(targetQ, 0.15);
-    }
-    renderer.render(scene, cam3);
+    renderer.render(scene,cam3);
   }
   loop();
 }
 
-// ── UI ───────────────────────────────────────────────────────────────────
-var currentMode = 'idle';
-var files = [], curIdx = 0;
+// ── Попадание курсора в панель ────────────────────────────────────────────
+// Проверяем через raycasting: бросаем луч из экранных координат
+var raycaster=new THREE.Raycaster();
+var screenVec=new THREE.Vector2();
+
+function isCursorOnPanel(sx,sy){
+  if(!panel3) return false;
+  screenVec.set(
+    (sx/window.innerWidth)*2-1,
+    -(sy/window.innerHeight)*2+1
+  );
+  raycaster.setFromCamera(screenVec,cam3);
+  var hits=raycaster.intersectObject(panel3,false);
+  return hits.length>0;
+}
+
+// ── Overlays ──────────────────────────────────────────────────────────────
+var currentMode='idle', files=[], curVid=null;
 
 function showPick(){
   currentMode='pick';
@@ -339,29 +352,27 @@ function hideAll(){
   document.getElementById('ov-list').classList.remove('show');
 }
 
-document.getElementById('file-input').addEventListener('change', function(e){
+document.getElementById('file-input').addEventListener('change',function(e){
   Array.from(e.target.files).forEach(function(f){
-    files.push({ name:f.name, url:URL.createObjectURL(f), size:f.size });
+    files.push({name:f.name,url:URL.createObjectURL(f),size:f.size});
   });
-  this.value = '';
+  this.value='';
   if(files.length) showList();
 });
 
-function fmtSz(b){ return b>1e6?(b/1e6).toFixed(1)+' МБ':(b/1e3).toFixed(0)+' КБ'; }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtSz(b){return b>1e6?(b/1e6).toFixed(1)+' МБ':(b/1e3).toFixed(0)+' КБ';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function buildList(){
-  var el = document.getElementById('fl-items'); el.innerHTML='';
+  var el=document.getElementById('fl-items');el.innerHTML='';
   files.forEach(function(f,i){
-    var d = document.createElement('div');
-    d.className='fli'; d.dataset.idx=i;
+    var d=document.createElement('div');
+    d.className='fli';d.dataset.idx=i;
     d.innerHTML=
       '<div class="fli-dwell"></div>'+
       '<div class="fli-icon">🎬</div>'+
-      '<div class="fli-info">'+
-        '<div class="fli-name">'+esc(f.name)+'</div>'+
-        '<div class="fli-size">'+(f.size?fmtSz(f.size):'')+'</div>'+
-      '</div>'+
+      '<div class="fli-info"><div class="fli-name">'+esc(f.name)+'</div>'+
+      '<div class="fli-size">'+(f.size?fmtSz(f.size):'')+'</div></div>'+
       '<svg class="fli-ring" viewBox="0 0 32 32">'+
         '<circle class="rbg" cx="16" cy="16" r="12" fill="none" stroke-width="2"/>'+
         '<circle class="rfg" cx="16" cy="16" r="12" fill="none" stroke-width="2.5"/>'+
@@ -370,73 +381,167 @@ function buildList(){
   });
 }
 
-// Текущий видео-элемент
-var curVid = null;
-
 function loadVideo(idx){
-  var f = files[idx];
+  var f=files[idx];
   hideAll();
   spinner.classList.add('show');
+  if(curVid){try{curVid.pause();}catch(e){}curVid.src='';curVid=null;}
+  if(vtex){vtex.dispose();vtex=null;}
+  if(panel3){scene.remove(panel3);panel3=null;}
 
-  if(curVid){ try{curVid.pause();}catch(e){} curVid.src=''; curVid=null; }
-  if(vtex){ vtex.dispose(); vtex=null; }
-  if(panel3){ scene.remove(panel3); panel3=null; }
-
-  var v = document.createElement('video');
-  v.playsInline=true; v.loop=true; v.muted=true; v.preload='auto';
-
-  var done = false;
+  var v=document.createElement('video');
+  v.playsInline=true;v.loop=true;v.muted=true;v.preload='auto';
+  var done=false;
   function onReady(){
-    if(done) return; done=true;
+    if(done)return;done=true;
     spinner.classList.remove('show');
-    curVid = v;
-
-    vtex = new THREE.VideoTexture(v);
-    vtex.minFilter = THREE.LinearFilter;
-    vtex.magFilter = THREE.LinearFilter;
-    vtex.generateMipmaps = false;
-
-    currentMode = 'playing';
-    modebar.textContent = '✌️ держи → переместить';
+    curVid=v;
+    vtex=new THREE.VideoTexture(v);
+    vtex.minFilter=THREE.LinearFilter;
+    vtex.magFilter=THREE.LinearFilter;
+    vtex.generateMipmaps=false;
+    currentMode='playing';
+    modebar.textContent='✌️ переместить  🤏 размер  ☝️ пауза';
     document.getElementById('hints').classList.remove('hidden');
-
     placePanel(v);
-    flash('▶ '+f.name.slice(0,20), '#00ffcc');
+    flash('▶ '+f.name.slice(0,20),'#00ffcc');
+  }
+  v.addEventListener('loadedmetadata',onReady);
+  v.addEventListener('canplay',onReady);
+  setTimeout(onReady,3000);
+  v.addEventListener('error',function(){
+    done=true;spinner.classList.remove('show');
+    flash('⚠ ОШИБКА','#ff4444');
+  });
+  v.src=f.url;v.load();
+}
+
+// ── Масштаб через щипок (большой + указательный) ─────────────────────────
+// scaleState: 'idle' | 'active' | 'cooldown'
+// Сброс: только когда расстояние НЕ щипок → снова щипок
+var scaleState='idle';
+var scaleRef=null,scaleRefVal=1.0,scaleBT=null;
+
+function updateScale(lms,isPinch){
+  if(currentMode!=='playing') return;
+
+  if(!isPinch){
+    // Не щипок — сбрасываем ref, готовы к новому
+    scaleRef=null;
+    scaleState='idle';
+    return;
   }
 
-  v.addEventListener('loadedmetadata', onReady);
-  v.addEventListener('canplay',        onReady);
-  setTimeout(onReady, 3000); // страховка
+  // Щипок активен — берём расстояние большой(4)+указательный(8)
+  var t=lms[4],i=lms[8];
+  var s=Math.hypot(t.x-i.x,t.y-i.y);
 
-  v.addEventListener('error', function(){
-    done=true;
-    spinner.classList.remove('show');
-    flash('⚠ ОШИБКА: '+f.name, '#ff4444');
-  });
+  if(scaleRef===null){
+    // Первый кадр щипка — запоминаем опорные значения
+    scaleRef=s;
+    scaleRefVal=pScale;
+    scaleState='active';
+    return;
+  }
 
-  v.src = f.url; v.load();
-}
-
-// ── Масштаб через открытую ладонь ────────────────────────────────────────
-var scaleRef=null, scaleRefVal=1.0, scaleBT=null;
-function doScale(lms){
-  var t=lms[4], p=lms[20];
-  var s=Math.hypot(t.x-p.x, t.y-p.y);
-  if(scaleRef===null){ scaleRef=s; scaleRefVal=pScale; return; }
-  if(scaleRef < 0.01) return;
-  pScale = Math.max(0.0001, scaleRefVal*(s/scaleRef));
+  if(scaleRef<0.005) return;
+  pScale=Math.max(0.0001,scaleRefVal*(s/scaleRef));
   if(panel3) panel3.scale.setScalar(pScale);
-  scalebadge.textContent='↔ '+Math.round(pScale*100)+'%';
+
+  scalebadge.textContent='🤏 '+Math.round(pScale*100)+'%';
   scalebadge.classList.add('show');
   clearTimeout(scaleBT);
-  scaleBT=setTimeout(function(){scalebadge.classList.remove('show');},800);
+  scaleBT=setTimeout(function(){scalebadge.classList.remove('show');},600);
 }
 
-// ── Скелет руки ──────────────────────────────────────────────────────────
+// ── Действия на жесты — конечный автомат ─────────────────────────────────
+//
+// Принцип антиспама:
+// Каждое действие имеет STATE: 'idle' | 'charging' | 'fired' | 'cooldown'
+// 'fired'    — действие выполнено
+// 'cooldown' — ждём пока жест УЙДЁТ прежде чем снова зарядить
+// Т.е. нужно убрать руку / сменить жест → только тогда можно снова
+
+var actions = {
+  // ✌️ PEACE — открыть файлы (idle/list) или переместить (playing)
+  peace: { state:'idle', startT:0, HOLD:800, color:'#00ffcc' },
+  // ✊ FIST — пауза/плей
+  fist:  { state:'idle', startT:0, HOLD:800, color:'#ff6633' },
+};
+
+function tickAction(key,active,now){
+  var a=actions[key];
+  if(!active){
+    // Жест ушёл — если было fired/cooldown → возвращаем в idle
+    if(a.state==='fired'||a.state==='cooldown') a.state='idle';
+    if(a.state==='charging') a.state='idle';
+    hideActBar();
+    hideRing();
+    return false;
+  }
+  // Жест активен
+  if(a.state==='idle'){
+    a.state='charging'; a.startT=now;
+  }
+  if(a.state==='fired'||a.state==='cooldown'){
+    // Жест не отпускали — ничего не делаем
+    hideActBar(); hideRing();
+    return false;
+  }
+  if(a.state==='charging'){
+    var pct=Math.min(1,(now-a.startT)/a.HOLD);
+    showActBar(pct,a.color);
+    if(pct>=1){
+      a.state='fired';
+      hideActBar(); hideRing();
+      return true; // сигнал: выполнить действие
+    }
+  }
+  return false;
+}
+
+// Указательный на видео — пауза (мгновенно, без hold)
+// state: 'idle' | 'active' | 'cooldown'
+var tapState='idle';
+function tickTap(onPanel,now){
+  if(currentMode!=='playing') return false;
+  if(!onPanel){
+    if(tapState==='active'||tapState==='cooldown') tapState='idle';
+    return false;
+  }
+  if(tapState==='idle'){
+    tapState='active';
+    return true; // мгновенное действие
+  }
+  if(tapState==='active'||tapState==='cooldown'){
+    // Держит палец — не повторяем
+    tapState='cooldown';
+    return false;
+  }
+  return false;
+}
+
+// ── Прогресс-бар / кольцо ─────────────────────────────────────────────────
+function showActBar(pct,col){
+  actbar.classList.add('show');
+  actfill.style.width=(pct*100)+'%';
+  actfill.style.background=col;
+  actfill.style.boxShadow='0 0 6px '+col;
+}
+function hideActBar(){ actbar.classList.remove('show'); actfill.style.width='0%'; }
+function showRing(x,y,pct,col){
+  holdring.style.display='block';
+  holdring.style.left=x+'px';holdring.style.top=y+'px';
+  harc.style.stroke=col||'#00ffcc';
+  harc.style.strokeDashoffset=(144.5*(1-pct))+'';
+}
+function hideRing(){ holdring.style.display='none'; }
+
+// ── Скелет ────────────────────────────────────────────────────────────────
 var FC=['#ff9933','#00ffcc','#33ddff','#bb66ff','#ff55aa'];
 var FSEG=[{s:[[0,1],[1,2],[2,3],[3,4]],c:'#ff9933'},{s:[[0,5],[5,6],[6,7],[7,8]],c:'#00ffcc'},{s:[[5,9],[9,10],[10,11],[11,12]],c:'#33ddff'},{s:[[9,13],[13,14],[14,15],[15,16]],c:'#bb66ff'},{s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'}];
-var PALM=[[0,17],[5,9],[9,13],[13,17]], TIPS=[4,8,12,16,20], MCPS=[1,5,9,13,17];
-function pt(lms,i){return{x:lms[i].x*cv.width, y:lms[i].y*cv.height};}
+var PALM=[[0,17],[5,9],[9,13],[13,17]],TIPS=[4,8,12,16,20],MCPS=[1,5,9,13,17];
+function pt(lms,i){return{x:lms[i].x*cv.width,y:lms[i].y*cv.height};}
 function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
 function drawHand(lms,g){
@@ -458,24 +563,23 @@ function drawHand(lms,g){
   ctx.restore();
 }
 
-// ── Жесты ────────────────────────────────────────────────────────────────
+// ── Жесты ─────────────────────────────────────────────────────────────────
 function fUp(lms,tip,dip,mcp){var w=lms[0];var d=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};return d(lms[tip])>d(lms[dip])&&d(lms[tip])>d(lms[mcp]);}
 function getG(lms){
   var i=fUp(lms,8,7,5),m=fUp(lms,12,11,9),r=fUp(lms,16,15,13),p=fUp(lms,20,19,17);
-  var pinch=dst(lms[4],lms[8])<0.08;
-  if(!i&&!m&&!r&&!p) return 'FIST';
-  if(i&&m&&r&&p)     return 'OPEN';
-  if(i&&m&&!r&&!p)   return 'PEACE';
+  var pinch=dst(lms[4],lms[8])<0.07;
+  if(!i&&!m&&!r&&!p)     return 'FIST';
+  if(i&&m&&!r&&!p)       return 'PEACE';
   if(i&&!m&&!r&&!p&&pinch) return 'PINCH';
-  if(i&&!m&&!r&&!p)  return 'POINT';
+  if(i&&!m&&!r&&!p)      return 'POINT';
   return 'OTHER';
 }
 
-// ── Dwell ─────────────────────────────────────────────────────────────────
-var dwellTgt=null, dwellT=0, DWELL=1000;
+// ── Dwell (выбор файла) ────────────────────────────────────────────────────
+var dwellTgt=null,dwellT=0,DWELL=1000;
 function doDwell(fx,fy){
   if(currentMode!=='list') return;
-  var items=document.querySelectorAll('.fli'); var hit=null;
+  var items=document.querySelectorAll('.fli');var hit=null;
   items.forEach(function(el){var r=el.getBoundingClientRect();if(fx>=r.left-20&&fx<=r.right+20&&fy>=r.top-20&&fy<=r.bottom+20)hit=el;});
   if(hit){
     items.forEach(function(el){if(el!==hit){el.classList.remove('hover');el.querySelector('.fli-dwell').style.width='0%';el.querySelector('.rfg').style.strokeDashoffset='100';}});
@@ -484,67 +588,99 @@ function doDwell(fx,fy){
     var pct=Math.min(1,(Date.now()-dwellT)/DWELL);
     hit.querySelector('.fli-dwell').style.width=(pct*100)+'%';
     hit.querySelector('.rfg').style.strokeDashoffset=(100*(1-pct))+'';
-    if(pct>=1){var idx=parseInt(hit.dataset.idx);dwellTgt=null;curIdx=idx;loadVideo(idx);}
+    if(pct>=1){var idx=parseInt(hit.dataset.idx);dwellTgt=null;loadVideo(idx);}
   } else {
     if(dwellTgt){dwellTgt.querySelector('.fli-dwell').style.width='0%';dwellTgt.querySelector('.rfg').style.strokeDashoffset='100';dwellTgt.classList.remove('hover');dwellTgt=null;}
   }
 }
 
-// ── Hold ──────────────────────────────────────────────────────────────────
-var holdG='',holdT=0,lastTrig=0,HOLD=750;
-function doHold(g,fx,fy){
-  var now=Date.now();
-  if(g==='OPEN') return;
-  if(g!==holdG){holdG=g;holdT=now;hideRing();hb.style.display='none';return;}
-  var held=now-holdT;
-  var need=(g==='PEACE')||(g==='FIST'&&currentMode==='playing');
-  if(need&&held>80){
-    var pct=Math.min(1,held/HOLD);
-    showRing(fx,fy,pct);
-    if(g==='FIST'){hb.style.display='block';hf.style.background='#ff6633';hf.style.boxShadow='0 0 8px #ff6633';hf.style.width=(pct*100)+'%';}
-  } else {hideRing();hb.style.display='none';}
-  if(held>=HOLD&&now-lastTrig>1500){
-    lastTrig=now;holdT=now;hideRing();hb.style.display='none';
-    if(g==='PEACE'){
-      if(currentMode==='idle'||currentMode==='pick'||currentMode==='list') showPick();
-      else if(currentMode==='playing'){
-        if(curVid) placePanel(curVid);
-        flash('📌 ПЕРЕМЕЩЕНО','#00ffcc');
-      }
-    }
-    if(g==='FIST'&&currentMode==='playing'){
-      if(curVid){
-        if(curVid.paused) curVid.play().catch(function(){});
-        else curVid.pause();
-        flash(curVid.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc');
-      }
-    }
-  }
-}
-function showRing(x,y,pct){holdring.style.display='block';holdring.style.left=x+'px';holdring.style.top=y+'px';harc.style.strokeDashoffset=(144.5*(1-pct))+''; }
-function hideRing(){holdring.style.display='none';}
-
-// ── MediaPipe — читает из той же камеры ──────────────────────────────────
+// ── MediaPipe ──────────────────────────────────────────────────────────────
 var hands;
 function initHands(){
   hands=new Hands({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/'+f;}});
   hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
   hands.onResults(function(res){
     ctx.clearRect(0,0,cv.width,cv.height);
+    var now=Date.now();
+
     if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){
-      var lms=res.multiHandLandmarks[0]; var g=getG(lms);
+      var lms=res.multiHandLandmarks[0];
+      var g=getG(lms);
       drawHand(lms,g);
-      if(g==='OPEN'&&currentMode==='playing') doScale(lms);
-      else scaleRef=null;
-      var tip=pt(lms,8);
-      cursor.style.display='block';cursor.style.left=tip.x+'px';cursor.style.top=tip.y+'px';
-      cursor.style.borderColor=g==='PINCH'?'#ff4444':'#00ffcc';
-      doDwell(tip.x,tip.y); doHold(g,tip.x,tip.y);
+
+      var isPinch=(g==='PINCH');
+      var tip8=pt(lms,8); // кончик указательного
+
+      // Курсор
+      cursor.style.display='block';
+      cursor.style.left=tip8.x+'px';
+      cursor.style.top=tip8.y+'px';
+      cursor.className=isPinch?'pinch':'';
+
+      // Масштаб через щипок
+      updateScale(lms,isPinch);
+
+      // Указательный на видео → пауза (только не щипок)
+      if(g==='POINT'){
+        var onPanel=isCursorOnPanel(tip8.x,tip8.y);
+        if(tickTap(onPanel,now)){
+          if(curVid){
+            if(curVid.paused) curVid.play().catch(function(){});
+            else curVid.pause();
+            flash(curVid.paused?'⏸':'▶','#00ffcc');
+          }
+        }
+      } else {
+        tickTap(false,now); // сброс tap state
+      }
+
+      // ✌️ PEACE
+      var peaceFired=tickAction('peace',g==='PEACE',now);
+      if(peaceFired){
+        if(currentMode==='idle'||currentMode==='pick'||currentMode==='list'){
+          showPick();
+        } else if(currentMode==='playing'){
+          if(curVid) placePanel(curVid);
+          flash('📌 ПЕРЕМЕЩЕНО','#00ffcc');
+        }
+      }
+      // Показываем кольцо пока заряжается
+      if(g==='PEACE'&&actions.peace.state==='charging'){
+        var pct=Math.min(1,(now-actions.peace.startT)/actions.peace.HOLD);
+        showRing(tip8.x,tip8.y,pct,'#00ffcc');
+      } else if(g!=='PEACE'){
+        hideRing();
+      }
+
+      // ✊ FIST — пауза
+      var fistFired=tickAction('fist',g==='FIST',now);
+      if(fistFired&&currentMode==='playing'){
+        if(curVid){
+          if(curVid.paused) curVid.play().catch(function(){});
+          else curVid.pause();
+          flash(curVid.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#ff6633');
+        }
+      }
+      if(g==='FIST'&&actions.fist.state==='charging'){
+        var pct2=Math.min(1,(now-actions.fist.startT)/actions.fist.HOLD);
+        showActBar(pct2,'#ff6633');
+      }
+
+      // Dwell список
+      doDwell(tip8.x,tip8.y);
       dot.className='on'; stxt.textContent=g;
+
     } else {
+      // Нет руки — сбрасываем все состояния
       ctx.clearRect(0,0,cv.width,cv.height);
-      cursor.style.display='none'; hideRing(); hb.style.display='none';
-      dot.className=''; stxt.textContent='НЕТ РУКИ'; holdG=''; scaleRef=null;
+      cursor.style.display='none';
+      hideRing(); hideActBar();
+      dot.className=''; stxt.textContent='НЕТ РУКИ';
+      // Сброс автоматов
+      tickAction('peace',false,now);
+      tickAction('fist',false,now);
+      tickTap(false,now);
+      scaleRef=null;
       if(dwellTgt){dwellTgt.querySelector('.fli-dwell').style.width='0%';dwellTgt.querySelector('.rfg').style.strokeDashoffset='100';dwellTgt=null;}
     }
   });
