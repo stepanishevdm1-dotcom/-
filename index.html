@@ -257,10 +257,23 @@ function onOrientation(e){
   // Поворот для portrait режима
   q.multiply(new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5)));
 
-  // Применяем GYRO_SCALE: интерполируем между нейтральным и полным поворотом
-  var qNeutral=new THREE.Quaternion(); // identity (нет поворота)
-  var qScaled=new THREE.Quaternion().copy(qNeutral).slerp(q,GYRO_SCALE);
-  cam3.quaternion.copy(qScaled);
+  // Применяем GYRO_SCALE через масштабирование угла поворота
+  // Правильный способ: извлекаем ось+угол, масштабируем угол
+  var axis=new THREE.Vector3();
+  var angle=2*Math.acos(Math.max(-1,Math.min(1,q.w)));
+  if(angle>0.0001){
+    var sinHalf=Math.sqrt(1-q.w*q.w);
+    if(sinHalf>0.0001){
+      axis.set(q.x/sinHalf,q.y/sinHalf,q.z/sinHalf);
+    } else {
+      axis.set(1,0,0);
+    }
+    var qScaled=new THREE.Quaternion();
+    qScaled.setFromAxisAngle(axis,angle*GYRO_SCALE);
+    cam3.quaternion.copy(qScaled);
+  } else {
+    cam3.quaternion.copy(q);
+  }
 }
 
 window.addEventListener('deviceorientationabsolute',onOrientation,true);
@@ -303,22 +316,30 @@ function placePanel(vel){
   dirFull.applyQuaternion(cam3.quaternion);
   var pos=new THREE.Vector3().addScaledVector(dirFull,2.5);
   panel3.position.copy(pos);
-  // Поворот только по Y — панель вертикальна
-  var dirH=dirFull.clone(); dirH.y=0;
-  if(dirH.lengthSq()<0.0001) dirH.set(0,0,-1);
-  dirH.normalize();
-  panel3.rotation.set(0,Math.atan2(dirH.x,dirH.z)+Math.PI,0);
+  // Панель смотрит на камеру по Y-оси (вертикальная плоскость)
+  // lookAt только горизонтальный — не заваливается набок
+  // rotation обновляется каждый кадр в render loop (billboard)
 
   vel.muted=false;
   vel.play().catch(function(){vel.muted=true;vel.play().catch(function(){});});
 }
 
-// ── Render loop — только рендер, без slerp ────────────────────────────────
+// ── Billboard: обновляем поворот панели каждый кадр ──────────────────────
+function updateBillboard(){
+  if(!panel3) return;
+  // Billboard только по Y — панель всегда лицом к камере, не заваливается
+  var cp=new THREE.Vector3();
+  cam3.getWorldPosition(cp);
+  var dx=cp.x-panel3.position.x;
+  var dz=cp.z-panel3.position.z;
+  panel3.rotation.y=Math.atan2(dx,dz);
+}
+
+// ── Render loop ────────────────────────────────────────────────────────────
 function startRenderLoop(){
-  // 60fps рендер — без ограничений, Three.js VideoTexture обновляется каждый кадр
   function loop(){
     requestAnimationFrame(loop);
-    // Явно помечаем текстуру как обновлённую каждый кадр
+    updateBillboard();
     if(vtex) vtex.needsUpdate=true;
     renderer.render(scene,cam3);
   }
@@ -667,6 +688,8 @@ function initHands(){
           if(curVid) placePanel(curVid);
           flash('📌 ПЕРЕМЕЩЕНО','#00ffcc');
         }
+        // Требуем убрать жест перед следующим срабатыванием
+        actions.peace.state='cooldown';
       }
       // Показываем кольцо пока заряжается
       if(g==='PEACE'&&actions.peace.state==='charging'){
@@ -684,6 +707,7 @@ function initHands(){
           else curVid.pause();
           flash(curVid.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#ff6633');
         }
+        actions.fist.state='cooldown';
       }
       if(g==='FIST'&&actions.fist.state==='charging'){
         var pct2=Math.min(1,(now-actions.fist.startT)/actions.fist.HOLD);
