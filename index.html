@@ -216,7 +216,8 @@ function initThree(){
 var rawA=0,rawB=0,rawG=0;       // сырые углы
 var smA=0,smB=0,smG=0;          // сглаженные
 var gyroReady=false, gyroInit=false;
-var GYRO_LP=0.25; // маленькое = быстрее, меньше задержки // low-pass коэффициент: 0=нет сглаживания, 1=заморожено
+var GYRO_LP=0.25;   // сглаживание: 0=нет, 1=заморожено
+var GYRO_SCALE=0.55; // чувствительность: 1=полная, 0.5=вдвое медленнее // low-pass коэффициент: 0=нет сглаживания, 1=заморожено
 
 // Коррекция угла alpha при переходе 360→0
 function lerpAngle(cur, target, k){
@@ -256,8 +257,10 @@ function onOrientation(e){
   // Поворот для portrait режима
   q.multiply(new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5)));
 
-  // МГНОВЕННОЕ применение — никакого slerp!
-  cam3.quaternion.copy(q);
+  // Применяем GYRO_SCALE: интерполируем между нейтральным и полным поворотом
+  var qNeutral=new THREE.Quaternion(); // identity (нет поворота)
+  var qScaled=new THREE.Quaternion().copy(qNeutral).slerp(q,GYRO_SCALE);
+  cam3.quaternion.copy(qScaled);
 }
 
 window.addEventListener('deviceorientationabsolute',onOrientation,true);
@@ -295,10 +298,16 @@ function placePanel(vel){
   if(dir.lengthSq()<0.0001) dir.set(0,0,-1);
   dir.normalize();
 
-  var pos=new THREE.Vector3().addScaledVector(dir,2.5);
-  pos.y=0;
+  // Полное направление включая вертикаль — видео идёт туда куда смотришь
+  var dirFull=new THREE.Vector3(0,0,-1);
+  dirFull.applyQuaternion(cam3.quaternion);
+  var pos=new THREE.Vector3().addScaledVector(dirFull,2.5);
   panel3.position.copy(pos);
-  panel3.rotation.set(0,Math.atan2(dir.x,dir.z)+Math.PI,0);
+  // Поворот только по Y — панель вертикальна
+  var dirH=dirFull.clone(); dirH.y=0;
+  if(dirH.lengthSq()<0.0001) dirH.set(0,0,-1);
+  dirH.normalize();
+  panel3.rotation.set(0,Math.atan2(dirH.x,dirH.z)+Math.PI,0);
 
   vel.muted=false;
   vel.play().catch(function(){vel.muted=true;vel.play().catch(function(){});});
@@ -306,8 +315,11 @@ function placePanel(vel){
 
 // ── Render loop — только рендер, без slerp ────────────────────────────────
 function startRenderLoop(){
+  // 60fps рендер — без ограничений, Three.js VideoTexture обновляется каждый кадр
   function loop(){
     requestAnimationFrame(loop);
+    // Явно помечаем текстуру как обновлённую каждый кадр
+    if(vtex) vtex.needsUpdate=true;
     renderer.render(scene,cam3);
   }
   loop();
@@ -703,7 +715,7 @@ function startHandLoop(){
   function frame(ts){
     requestAnimationFrame(frame);
     if(cam.readyState<2||cam.paused) return;
-    if(ts-lastT<50) return;
+    if(ts-lastT<33) return; // ~30fps для рук (MediaPipe не быстрее)
     lastT=ts;
     hands.send({image:cam}).catch(function(){});
   }
