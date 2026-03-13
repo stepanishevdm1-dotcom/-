@@ -23,7 +23,6 @@
     top: 0; left: 0;
     width: 100%; height: 100%;
     object-fit: cover;
-    transform: scaleX(-1);
     z-index: 0;
   }
 
@@ -31,7 +30,6 @@
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    transform: scaleX(-1);
     z-index: 1;
     pointer-events: none;
   }
@@ -535,33 +533,147 @@ const CONNECTIONS = [
 
 function drawHand(hand, gesture) {
   ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-  const color = gesture === 'PINCH' ? '#ff3c3c' : gesture === 'PEACE' ? '#ffdd00' : '#00ffcc';
 
-  // Lines
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 6;
+  // Color per gesture
+  const baseColor = gesture === 'PINCH' ? '#ff4444'
+                  : gesture === 'PEACE' ? '#ffe44d'
+                  : gesture === 'FIST'  ? '#ff8c00'
+                  : '#00ffcc';
 
-  for (const [a, b] of CONNECTIONS) {
-    const pa = lm(hand, a);
-    const pb = lm(hand, b);
-    ctx.beginPath();
-    ctx.moveTo(pa.x, pa.y);
-    ctx.lineTo(pb.x, pb.y);
-    ctx.stroke();
-  }
+  // ── Finger color palette (one per ray: thumb, index, middle, ring, pinky)
+  const fingerColors = ['#ff9944', '#00ffcc', '#44ddff', '#aa88ff', '#ff66aa'];
 
-  // Dots
+  // Bones grouped by finger for coloring
+  const fingers = [
+    [[0,1],[1,2],[2,3],[3,4]],           // thumb
+    [[0,5],[5,6],[6,7],[7,8]],            // index
+    [[5,9],[9,10],[10,11],[11,12]],       // middle
+    [[9,13],[13,14],[14,15],[15,16]],     // ring
+    [[13,17],[17,18],[18,19],[19,20]],    // pinky
+  ];
+  const palmConnections = [[0,17],[5,9],[9,13],[13,17]];
+
+  // ── 1. Draw glow outer bone (thick blurred)
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  fingers.forEach((segs, fi) => {
+    const c = fingerColors[fi];
+    ctx.strokeStyle = c;
+    ctx.lineWidth = 8;
+    ctx.shadowColor = c;
+    ctx.shadowBlur = 18;
+    ctx.lineCap = 'round';
+    segs.forEach(([a,b]) => {
+      const pa = lm(hand, a), pb = lm(hand, b);
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    });
+  });
+  ctx.restore();
+
+  // ── 2. Draw thin crisp bone lines
+  ctx.save();
+  ctx.lineCap = 'round';
+  fingers.forEach((segs, fi) => {
+    const c = fingerColors[fi];
+    segs.forEach(([a,b]) => {
+      const pa = lm(hand, a), pb = lm(hand, b);
+      // Outer white glow line
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+      // Inner colored bone
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 0.8;
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 4;
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    });
+  });
+
+  // Palm bones thin
+  palmConnections.forEach(([a,b]) => {
+    const pa = lm(hand, a), pb = lm(hand, b);
+    ctx.strokeStyle = 'rgba(0,255,204,0.3)';
+    ctx.lineWidth = 0.7;
+    ctx.shadowBlur = 2;
+    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+  });
+  ctx.restore();
+
+  // ── 3. Draw joints (small hollow circles = cartilage)
+  ctx.save();
   for (let i = 0; i < 21; i++) {
     const p = lm(hand, i);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, i % 4 === 0 ? 5 : 3, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-  }
+    const isTip = [4,8,12,16,20].includes(i);
+    const isWrist = i === 0;
+    const isMcp = [1,5,9,13,17].includes(i);
 
-  ctx.shadowBlur = 0;
+    // Figure out which finger color
+    let c = '#00ffcc';
+    if (i <= 4) c = fingerColors[0];
+    else if (i <= 8) c = fingerColors[1];
+    else if (i <= 12) c = fingerColors[2];
+    else if (i <= 16) c = fingerColors[3];
+    else c = fingerColors[4];
+
+    if (isTip) {
+      // Fingertips: bright filled dot + outer glow ring
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Outer ring
+      ctx.shadowBlur = 6;
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (isWrist) {
+      // Wrist: double ring
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.stroke();
+    } else if (isMcp) {
+      // Knuckles: medium hollow circle
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      // Intermediate joints: tiny filled dot
+      ctx.shadowColor = c;
+      ctx.shadowBlur = 5;
+      ctx.fillStyle = c;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+
+  // ── 4. Special pinch indicator between thumb & index
+  if (gesture === 'PINCH') {
+    const t = lm(hand, 4), idx = lm(hand, 8);
+    ctx.save();
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.shadowColor = '#ff4444';
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(idx.x, idx.y); ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // ─── Gesture feedback ────────────────────────────────────────────────────────
