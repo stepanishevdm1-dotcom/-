@@ -3,83 +3,109 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>AR Hand · YouTube</title>
+<title>AR File Player</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
+
 #vid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 #cv{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
 
-/* AR window */
+/* ── AR floating window ── */
 #arwin{
-  position:fixed;z-index:10;display:none;flex-direction:column;
+  position:fixed;z-index:10;
+  display:none;flex-direction:column;
   border-radius:16px;overflow:hidden;
-  box-shadow:0 0 0 1.5px rgba(255,255,255,0.12),0 8px 60px rgba(0,0,0,0.85),0 0 0 1px rgba(0,255,204,0.25);
-  background:#0a0a0a;
-  width:92vw;
-  left:4vw;top:14vh;
+  border:1.5px solid rgba(0,255,204,0.3);
+  box-shadow:0 0 40px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);
+  background:rgba(8,8,8,0.88);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  transition:opacity .15s, border-color .15s;
+  width:88vw;
 }
 #arwin.show{display:flex;}
-#arwin.dragging{box-shadow:0 0 0 2px rgba(0,255,204,0.6),0 12px 80px rgba(0,0,0,0.9),0 0 40px rgba(0,255,204,0.15);}
+/* Semi-transparent when dragging or resizing — hand skeleton visible through */
+#arwin.moving{
+  opacity:0.45;
+  border-color:rgba(0,255,204,0.7);
+  box-shadow:0 0 0 2px rgba(0,255,204,0.5),0 0 60px rgba(0,255,204,0.12);
+}
 
-/* Titlebar */
+/* Titlebar — drag zone */
 #titlebar{
   display:flex;align-items:center;gap:8px;padding:9px 12px;
-  background:rgba(15,15,15,0.97);border-bottom:1px solid rgba(255,255,255,0.07);
+  background:rgba(12,12,12,0.95);
+  border-bottom:1px solid rgba(255,255,255,0.07);
   flex-shrink:0;cursor:grab;user-select:none;touch-action:none;
 }
-.tdot{width:11px;height:11px;border-radius:50%;}
+.tdot{width:10px;height:10px;border-radius:50%;}
 .tdot.r{background:#ff5f57;}.tdot.y{background:#febc2e;}.tdot.g{background:#28c840;}
-#titlelabel{flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;}
-#tbtn-close{width:22px;height:22px;border:none;background:none;color:rgba(255,255,255,0.35);font-size:18px;cursor:pointer;flex-shrink:0;}
+#titlelabel{flex:1;text-align:center;font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#tbtn-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:16px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1;}
 
-/* Search */
-#searchbar{
-  display:flex;align-items:center;gap:8px;padding:8px 10px;
-  background:rgba(18,18,18,0.98);border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;
+/* Video player */
+#mediaplayer{
+  width:100%;aspect-ratio:16/9;background:#000;flex-shrink:0;display:none;
+  position:relative;
 }
-#searchinput{
-  flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);
-  border-radius:20px;padding:7px 14px;color:#fff;font-size:13px;outline:none;
-  font-family:'Courier New',monospace;
+#mediaplayer video{width:100%;height:100%;display:block;background:#000;}
+
+/* File picker */
+#filepanel{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(10,10,10,0.6);min-height:80px;
 }
-#searchinput::placeholder{color:rgba(255,255,255,0.3);}
-#searchbtn{
-  background:#ff0000;border:none;color:#fff;border-radius:20px;
-  padding:7px 14px;font-size:12px;font-weight:bold;cursor:pointer;flex-shrink:0;
+#filepanel::-webkit-scrollbar{display:none;}
+
+#pick-btn-wrap{padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+#pick-btn{
+  background:rgba(0,255,204,0.12);border:1.5px solid rgba(0,255,204,0.4);
+  color:#00ffcc;border-radius:30px;padding:12px 28px;
+  font-size:13px;font-weight:bold;letter-spacing:2px;cursor:pointer;
+  font-family:'Courier New',monospace;width:100%;max-width:280px;
 }
+#pick-btn:active{background:rgba(0,255,204,0.22);}
+#pick-hint{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:1px;text-align:center;}
+#file-input{display:none;}
 
-/* Player */
-#player-wrap{width:100%;flex-shrink:0;background:#000;aspect-ratio:16/9;}
-#player-wrap iframe{display:block;width:100%;height:100%;border:none;}
+/* File list */
+#filelist{padding:0 0 8px;}
+.fitem{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;
+  transition:background .1s;
+}
+.fitem:active{background:rgba(255,255,255,0.07);}
+.fitem.playing{background:rgba(0,255,204,0.07);border-left:2px solid #00ffcc;}
+.ficon{font-size:20px;flex-shrink:0;width:28px;text-align:center;}
+.fname{flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fdur{font-size:10px;color:rgba(255,255,255,0.3);flex-shrink:0;}
 
-/* Results */
-#results{flex:1;overflow-y:auto;background:#111;-webkit-overflow-scrolling:touch;min-height:120px;max-height:38vh;}
-#results::-webkit-scrollbar{display:none;}
-.vcard{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;}
-.vcard:active{background:rgba(255,255,255,0.07);}
-.vthumb{width:88px;height:50px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#222;}
-.vinfo{flex:1;min-width:0;}
-.vtitle{font-size:12px;color:rgba(255,255,255,0.85);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.vchan{font-size:11px;color:rgba(255,255,255,0.35);margin-top:3px;}
-#results-msg{padding:20px;text-align:center;font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:1px;}
+/* Resize handle — bottom-right corner */
+#reshandle{
+  position:absolute;bottom:0;right:0;
+  width:36px;height:36px;cursor:se-resize;touch-action:none;
+  display:flex;align-items:flex-end;justify-content:flex-end;padding:7px;z-index:11;
+}
+#reshandle svg{opacity:.25;}
 
-/* HUD */
+/* ── HUD ── */
 #hud{position:fixed;top:0;left:0;right:0;z-index:20;padding:14px 18px 10px;background:linear-gradient(180deg,rgba(0,0,0,.8)0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;pointer-events:none;}
 #logo{color:#00ffcc;font-size:13px;letter-spacing:5px;font-weight:bold;}
 #srow{display:flex;align-items:center;gap:8px;}
-#dot{width:8px;height:8px;border-radius:50%;background:#444;}
+#dot{width:8px;height:8px;border-radius:50%;background:#444;transition:background .2s,box-shadow .2s;}
 #dot.on{background:#00ffcc;box-shadow:0 0 8px #00ffcc;}
 #dot.err{background:#ff4444;box-shadow:0 0 8px #ff4444;}
-#stxt{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:1px;}
+#stxt{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:1px;}
 
-/* Hints */
+/* ── Hints ── */
 #hints{position:fixed;bottom:0;left:0;right:0;z-index:20;padding:12px 10px 18px;background:linear-gradient(0deg,rgba(0,0,0,.85)0%,transparent 100%);display:flex;flex-wrap:wrap;gap:7px;justify-content:center;pointer-events:none;transition:opacity .4s;}
 #hints.hidden{opacity:0;}
-.h{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.6);letter-spacing:.4px;}
+.h{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.55);}
 
 /* Hold bar */
-#holdbar{position:fixed;z-index:25;pointer-events:none;bottom:88px;left:50%;transform:translateX(-50%);width:60vw;display:none;}
+#holdbar{position:fixed;z-index:25;pointer-events:none;bottom:86px;left:50%;transform:translateX(-50%);width:60vw;display:none;}
 #holdtrack{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
 #holdfill{height:100%;width:0%;border-radius:3px;}
 
@@ -89,13 +115,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 
 /* Loader */
 #loader{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;}
-#lt{font-size:26px;font-weight:bold;color:#00ffcc;letter-spacing:6px;text-shadow:0 0 30px #00ffcc;}
-#ls{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:3px;}
+#lt{font-size:24px;font-weight:bold;color:#00ffcc;letter-spacing:6px;text-shadow:0 0 30px #00ffcc;}
+#ls{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:3px;}
 #lb-o{width:200px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
-#lb-i{height:100%;width:0%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;transition:width .35s;}
-#lm{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:1px;text-align:center;padding:0 24px;min-height:30px;}
+#lb-i{height:100%;width:0%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;transition:width .3s;}
+#lm{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;text-align:center;padding:0 24px;min-height:28px;}
 #retry-btn{display:none;background:#00ffcc;color:#000;border:none;padding:12px 28px;font-size:13px;font-weight:bold;letter-spacing:3px;border-radius:30px;cursor:pointer;font-family:'Courier New',monospace;}
-.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:15;background:linear-gradient(90deg,transparent,rgba(0,255,204,.3),transparent);animation:scan 4s linear infinite;pointer-events:none;}
+.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:15;background:linear-gradient(90deg,transparent,rgba(0,255,204,.25),transparent);animation:scan 4s linear infinite;pointer-events:none;}
 @keyframes scan{to{top:100vh;}}
 </style>
 </head>
@@ -103,7 +129,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 
 <div id="loader">
   <div id="lt">AR HAND</div>
-  <div id="ls">GESTURE INTERFACE</div>
+  <div id="ls">FILE PLAYER</div>
   <div id="lb-o"><div id="lb-i"></div></div>
   <div id="lm">Загрузка…</div>
   <button id="retry-btn" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
@@ -113,28 +139,37 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
 <canvas id="cv"></canvas>
 <div class="scanline"></div>
 
-<!-- Floating AR YouTube -->
+<!-- AR File Player Window -->
 <div id="arwin">
   <div id="titlebar">
     <div class="tdot r" id="tbtn-close"></div>
     <div class="tdot y"></div>
     <div class="tdot g"></div>
-    <div id="titlelabel">▶ YOUTUBE AR</div>
+    <div id="titlelabel">◈ AR FILE PLAYER</div>
   </div>
-  <div id="searchbar">
-    <input id="searchinput" type="text" placeholder="Поиск видео…" autocomplete="off" autocorrect="off" spellcheck="false"/>
-    <button id="searchbtn" onclick="doSearch()">▶</button>
+
+  <div id="mediaplayer">
+    <video id="playervid" controls playsinline></video>
   </div>
-  <div id="player-wrap">
-    <iframe id="ytplayer"
-      src="https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&controls=1&rel=0&modestbranding=1"
-      allow="autoplay;encrypted-media;picture-in-picture"
-      allowfullscreen>
-    </iframe>
+
+  <div id="filepanel">
+    <div id="pick-btn-wrap">
+      <button id="pick-btn" onclick="document.getElementById('file-input').click()">
+        ＋ ВЫБРАТЬ ФАЙЛЫ
+      </button>
+      <div id="pick-hint">видео с телефона • mp4, mov, mkv…</div>
+    </div>
+    <div id="filelist"></div>
   </div>
-  <div id="results">
-    <div id="results-msg">Введи запрос и нажми ▶</div>
+
+  <!-- Resize handle -->
+  <div id="reshandle">
+    <svg width="14" height="14" viewBox="0 0 14 14">
+      <path d="M2 12L12 2M7 12L12 7" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
   </div>
+
+  <input id="file-input" type="file" accept="video/*,audio/*" multiple>
 </div>
 
 <div id="hud">
@@ -142,151 +177,136 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Co
   <div id="srow"><div id="dot"></div><span id="stxt">СТАРТ</span></div>
 </div>
 <div id="hints">
-  <div class="h">✌️ 2 пальца (держи) → YouTube</div>
-  <div class="h">✊ кулак (держи) → закрыть</div>
-  <div class="h">тяни за заголовок → переместить</div>
+  <div class="h">✌️ держи → открыть плеер</div>
+  <div class="h">✊ держи → закрыть</div>
+  <div class="h">тяни заголовок → двигать</div>
+  <div class="h">тяни уголок → размер</div>
 </div>
 <div id="holdbar"><div id="holdtrack"><div id="holdfill"></div></div></div>
 <div id="flash"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 <script>
-// ─── YouTube search via RSS/noembed (no API key needed) ───────────────────────
-// We use YouTube's own search suggestion + invidious public API as fallback
-// Best no-key approach: scrape YT search RSS
+// ─── File handling ────────────────────────────────────────────────────────────
+var files = []; // {name, url, type}
+var currentIdx = -1;
 
-function doSearch(){
-  var q = document.getElementById('searchinput').value.trim();
-  if(!q) return;
-  document.getElementById('results-msg').textContent = 'Поиск…';
-  document.getElementById('results').innerHTML = '<div id="results-msg">Поиск…</div>';
+document.getElementById('file-input').addEventListener('change', function(e){
+  var newFiles = Array.from(e.target.files);
+  newFiles.forEach(function(f){
+    var url = URL.createObjectURL(f);
+    var type = f.type.startsWith('audio') ? 'audio' : 'video';
+    files.push({name: f.name, url: url, type: type});
+  });
+  renderFileList();
+  if(files.length === 1) playFile(0); // auto-play first
+  this.value = '';
+});
 
-  // Invidious public instance — no API key, CORS friendly
-  var instances = [
-    'https://inv.nadeko.net',
-    'https://invidious.nerdvpn.de',
-    'https://invidious.privacydev.net'
-  ];
-  var idx = 0;
-
-  function tryNext(){
-    if(idx >= instances.length){
-      document.getElementById('results').innerHTML = '<div id="results-msg">Нет результатов. Проверь интернет.</div>';
-      return;
-    }
-    var url = instances[idx++] + '/api/v1/search?q=' + encodeURIComponent(q) + '&type=video&fields=videoId,title,author,videoThumbnails';
-    fetch(url, {signal: AbortSignal.timeout(6000)})
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        if(!data || !data.length){ tryNext(); return; }
-        renderResults(data.slice(0,15));
-      })
-      .catch(function(){ tryNext(); });
-  }
-  tryNext();
-}
-
-function renderResults(items){
-  var el = document.getElementById('results');
-  el.innerHTML = '';
-  items.forEach(function(v){
-    if(!v.videoId) return;
-    var thumb = (v.videoThumbnails && v.videoThumbnails.length)
-      ? v.videoThumbnails[v.videoThumbnails.length-1].url
-      : 'https://i.ytimg.com/vi/'+v.videoId+'/mqdefault.jpg';
-    // fix protocol-relative URLs
-    if(thumb.startsWith('//')) thumb = 'https:' + thumb;
-
-    var card = document.createElement('div');
-    card.className = 'vcard';
-    card.innerHTML =
-      '<img class="vthumb" src="'+thumb+'" loading="lazy" onerror="this.src=\'https://i.ytimg.com/vi/'+v.videoId+'/mqdefault.jpg\'">' +
-      '<div class="vinfo"><div class="vtitle">'+escHtml(v.title)+'</div><div class="vchan">'+escHtml(v.author||'')+'</div></div>';
-    card.addEventListener('click', function(){ playVideo(v.videoId, v.title); });
-    el.appendChild(card);
+function renderFileList(){
+  var list = document.getElementById('filelist');
+  list.innerHTML = '';
+  files.forEach(function(f, i){
+    var item = document.createElement('div');
+    item.className = 'fitem' + (i === currentIdx ? ' playing' : '');
+    item.innerHTML =
+      '<div class="ficon">' + (f.type==='audio'?'🎵':'🎬') + '</div>' +
+      '<div class="fname">' + escHtml(f.name) + '</div>';
+    item.addEventListener('click', function(){ playFile(i); });
+    list.appendChild(item);
   });
 }
 
+function playFile(idx){
+  if(idx < 0 || idx >= files.length) return;
+  currentIdx = idx;
+  var f = files[idx];
+  var pv = document.getElementById('playervid');
+  var mp = document.getElementById('mediaplayer');
+  pv.src = f.url;
+  pv.load();
+  pv.play().catch(function(){});
+  mp.style.display = 'block';
+  document.getElementById('titlelabel').textContent = f.name;
+  renderFileList();
+}
+
 function escHtml(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function playVideo(id, title){
-  var iframe = document.getElementById('ytplayer');
-  iframe.src = 'https://www.youtube.com/embed/'+id+'?autoplay=1&controls=1&rel=0&modestbranding=1';
-  document.getElementById('titlelabel').textContent = '▶ ' + (title||'').slice(0,30);
-  // scroll player into view
-  document.getElementById('player-wrap').scrollIntoView({behavior:'smooth'});
-}
-
-// Search on Enter
-document.getElementById('searchinput').addEventListener('keydown', function(e){
-  if(e.key === 'Enter'){ e.preventDefault(); doSearch(); }
-});
-
-// ─── AR window drag (touch) ──────────────────────────────────────────────────
+// ─── AR window state ──────────────────────────────────────────────────────────
 var arwin = document.getElementById('arwin');
-var arX=0, arY=0, arW=0, arH=0;
-var dragOn=false, dragTX=0, dragTY=0, dragOX=0, dragOY=0;
-
-function applyPos(){
-  arwin.style.left = arX+'px';
-  arwin.style.top  = arY+'px';
-  arwin.style.width= arW+'px';
-  // height is auto (flex column), don't set it
-}
-
-var tb = document.getElementById('titlebar');
-tb.addEventListener('touchstart', function(e){
-  e.preventDefault();
-  dragOn=true;
-  dragTX=e.touches[0].clientX; dragTY=e.touches[0].clientY;
-  dragOX=arX; dragOY=arY;
-  arwin.classList.add('dragging');
-},{passive:false});
-document.addEventListener('touchmove', function(e){
-  if(!dragOn) return;
-  e.preventDefault();
-  arX = dragOX + (e.touches[0].clientX - dragTX);
-  arY = dragOY + (e.touches[0].clientY - dragTY);
-  // clamp
-  arX = Math.max(-arW*0.7, Math.min(window.innerWidth-arW*0.3, arX));
-  arY = Math.max(0, Math.min(window.innerHeight-60, arY));
-  applyPos();
-},{passive:false});
-document.addEventListener('touchend', function(){ dragOn=false; arwin.classList.remove('dragging'); });
-
-document.getElementById('tbtn-close').addEventListener('click', closeAR);
-
-// ─── Open / close ─────────────────────────────────────────────────────────────
+var arX = 0, arY = 0, arW = 0;
 var arOpen = false;
 
 function openAR(){
-  arW = window.innerWidth * 0.92;
+  arW = Math.min(window.innerWidth * 0.9, 420);
   arX = (window.innerWidth - arW) / 2;
-  arY = window.innerHeight * 0.13;
+  arY = window.innerHeight * 0.1;
   applyPos();
-  arwin.style.width = arW+'px';
+  arwin.style.width = arW + 'px';
   arwin.classList.add('show');
   arOpen = true;
   document.getElementById('hints').classList.add('hidden');
-  showFlash('▶ YOUTUBE','#ff2222');
+  showFlash('◈ ФАЙЛЫ','#00ffcc');
 }
 function closeAR(){
   arwin.classList.remove('show');
-  document.getElementById('ytplayer').src = 'about:blank';
+  document.getElementById('playervid').pause();
   arOpen = false;
   document.getElementById('hints').classList.remove('hidden');
   showFlash('✕ ЗАКРЫТО','#00ffcc');
 }
+function applyPos(){
+  arwin.style.left  = Math.round(arX) + 'px';
+  arwin.style.top   = Math.round(arY) + 'px';
+  arwin.style.width = Math.round(arW) + 'px';
+}
+
+document.getElementById('tbtn-close').addEventListener('click', closeAR);
+
+// ─── Touch drag (titlebar) ────────────────────────────────────────────────────
+var tb = document.getElementById('titlebar');
+var dragOn=false, dTX=0, dTY=0, dOX=0, dOY=0;
+
+tb.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  dragOn=true; dTX=e.touches[0].clientX; dTY=e.touches[0].clientY; dOX=arX; dOY=arY;
+  arwin.classList.add('moving');
+},{passive:false});
+document.addEventListener('touchmove', function(e){
+  if(!dragOn) return; e.preventDefault();
+  arX = dOX + (e.touches[0].clientX - dTX);
+  arY = dOY + (e.touches[0].clientY - dTY);
+  arX = Math.max(-arW*0.6, Math.min(window.innerWidth - arW*0.4, arX));
+  arY = Math.max(0, Math.min(window.innerHeight - 50, arY));
+  applyPos();
+},{passive:false});
+document.addEventListener('touchend', function(){ dragOn=false; arwin.classList.remove('moving'); });
+
+// ─── Touch resize (corner handle) ────────────────────────────────────────────
+var rh = document.getElementById('reshandle');
+var resOn=false, rSX=0, rOW=0;
+rh.addEventListener('touchstart', function(e){
+  e.preventDefault(); e.stopPropagation();
+  resOn=true; rSX=e.touches[0].clientX; rOW=arW;
+  arwin.classList.add('moving');
+},{passive:false});
+document.addEventListener('touchmove', function(e){
+  if(!resOn) return; e.preventDefault();
+  arW = Math.max(220, Math.min(window.innerWidth*0.98, rOW + (e.touches[0].clientX - rSX)));
+  applyPos();
+},{passive:false});
+document.addEventListener('touchend', function(){ resOn=false; arwin.classList.remove('moving'); });
 
 // ─── Flash ────────────────────────────────────────────────────────────────────
 var flt;
 function showFlash(txt,col){
   var f=document.getElementById('flash');
   f.textContent=txt; f.style.color=col; f.style.textShadow='0 0 24px '+col;
-  f.classList.add('show');
-  clearTimeout(flt); flt=setTimeout(function(){f.classList.remove('show');},1000);
+  f.classList.add('show'); clearTimeout(flt);
+  flt=setTimeout(function(){f.classList.remove('show');},1000);
 }
 
 // ─── Canvas ───────────────────────────────────────────────────────────────────
@@ -306,12 +326,12 @@ var FSEG=[
 var PALM=[[0,17],[5,9],[9,13],[13,17]];
 var TIPS=[4,8,12,16,20], MCPS=[1,5,9,13,17];
 
-function pt(lms,i){ return{x:lms[i].x*cv.width,y:lms[i].y*cv.height}; }
-function dst(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+function pt(lms,i){return{x:lms[i].x*cv.width,y:lms[i].y*cv.height};}
+function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
 function drawHand(lms,gest){
   ctx.clearRect(0,0,cv.width,cv.height);
-  // glow
+  // glow blobs
   ctx.save(); ctx.globalAlpha=0.12; ctx.lineCap='round';
   FSEG.forEach(function(f){
     ctx.strokeStyle=f.c; ctx.lineWidth=14; ctx.shadowColor=f.c; ctx.shadowBlur=24;
@@ -319,14 +339,18 @@ function drawHand(lms,gest){
   }); ctx.restore();
   // palm
   ctx.save(); ctx.lineCap='round';
-  PALM.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.strokeStyle='rgba(0,255,200,0.18)';ctx.lineWidth=0.7;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
+  PALM.forEach(function(ab){
+    var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
+    ctx.strokeStyle='rgba(0,255,200,0.18)';ctx.lineWidth=0.7;ctx.shadowBlur=0;
+    ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
+  });
   // bones
   FSEG.forEach(function(f){
     f.s.forEach(function(ab){
       var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
-      ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1.4;ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=1.3;ctx.shadowBlur=0;
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
-      ctx.strokeStyle=f.c;ctx.lineWidth=0.8;ctx.shadowColor=f.c;ctx.shadowBlur=6;
+      ctx.strokeStyle=f.c;ctx.lineWidth=0.75;ctx.shadowColor=f.c;ctx.shadowBlur=5;
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
     });
   }); ctx.restore();
@@ -338,7 +362,7 @@ function drawHand(lms,gest){
     if(TIPS.indexOf(i)>=0){
       ctx.shadowColor=col;ctx.shadowBlur=18;ctx.fillStyle=col;
       ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.65)';ctx.lineWidth=0.9;ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=0.9;ctx.shadowBlur=0;
       ctx.beginPath();ctx.arc(p.x,p.y,7.5,0,Math.PI*2);ctx.stroke();
     } else if(i===0){
       ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.shadowColor=col;ctx.shadowBlur=10;
@@ -347,17 +371,16 @@ function drawHand(lms,gest){
     } else if(MCPS.indexOf(i)>=0){
       ctx.strokeStyle=col;ctx.lineWidth=1.1;ctx.shadowColor=col;ctx.shadowBlur=7;
       ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.stroke();
-      ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
     } else {
-      ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=4;ctx.globalAlpha=0.85;
+      ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=4;ctx.globalAlpha=0.82;
       ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
     }
   }
   // pinch dash
   if(gest==='PINCH'){
     var t=pt(lms,4),ix=pt(lms,8);
-    ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;
-    ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
+    ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
     ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(ix.x,ix.y);ctx.stroke();
   }
   ctx.restore();
@@ -391,7 +414,7 @@ function tryTrigger(g){
   if(needHold){
     var pct=Math.min(1,(now-holdStart)/HOLD_MS);
     hb.style.display='block';
-    var col=g==='PEACE'?'#ffe44d':'#ff6633';
+    var col=g==='PEACE'?'#00ffcc':'#ff6633';
     hf.style.background=col;hf.style.boxShadow='0 0 8px '+col;
     hf.style.width=(pct*100)+'%';
   } else {hb.style.display='none';}
@@ -402,8 +425,8 @@ function tryTrigger(g){
   }
 }
 
-// ─── MediaPipe Hands ──────────────────────────────────────────────────────────
-var vid=document.getElementById('vid');
+// ─── MediaPipe ────────────────────────────────────────────────────────────────
+var camvid=document.getElementById('vid');
 var dot=document.getElementById('dot'),stxt=document.getElementById('stxt');
 var hands;
 
@@ -420,22 +443,25 @@ function initHands(){
       drawHand(lms,g);
       tryTrigger(g);
       dot.className='on';stxt.textContent=g;
-    } else {dot.className='';stxt.textContent='НЕТ РУКИ';holdG='';hb.style.display='none';}
+    } else {
+      dot.className='';stxt.textContent='НЕТ РУКИ';
+      holdG='';hb.style.display='none';
+    }
   });
 }
 
 async function startCamera(){
-  var constraints=[
+  var opts=[
     {video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},
     {video:{facingMode:'environment'},audio:false},
     {video:true,audio:false}
   ];
-  for(var i=0;i<constraints.length;i++){
+  for(var i=0;i<opts.length;i++){
     try{
-      var s=await navigator.mediaDevices.getUserMedia(constraints[i]);
-      vid.srcObject=s;
-      return new Promise(function(r){vid.onloadedmetadata=function(){vid.play().then(r);};});
-    } catch(e){}
+      var s=await navigator.mediaDevices.getUserMedia(opts[i]);
+      camvid.srcObject=s;
+      return new Promise(function(r){camvid.onloadedmetadata=function(){camvid.play().then(r);};});
+    }catch(e){}
   }
   throw new Error('Камера недоступна');
 }
@@ -444,10 +470,10 @@ function startLoop(){
   var lastT=0;
   function frame(ts){
     requestAnimationFrame(frame);
-    if(vid.readyState<2||vid.paused)return;
-    if(ts-lastT<50)return;
+    if(camvid.readyState<2||camvid.paused)return;
+    if(ts-lastT<50)return; // 20fps
     lastT=ts;
-    hands.send({image:vid}).catch(function(){});
+    hands.send({image:camvid}).catch(function(){});
   }
   requestAnimationFrame(frame);
 }
@@ -459,7 +485,7 @@ function setLoad(p,m){lbI.style.width=p+'%';lmEl.textContent=m;}
   try{
     setLoad(20,'Инициализация MediaPipe…');
     initHands();
-    setLoad(50,'Загрузка модели…');
+    setLoad(50,'Загрузка модели рук…');
     await hands.initialize();
     setLoad(80,'Включение камеры…');
     await startCamera();
