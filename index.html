@@ -3,788 +3,409 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>AR Hand Browser</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/hand-pose-detection@2.0.1/dist/hand-pose-detection.js"></script>
+<title>AR Hand</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Courier New',monospace; }
 
-  body {
-    background: #000;
-    font-family: 'Courier New', monospace;
-    overflow: hidden;
-    width: 100vw;
-    height: 100vh;
-    user-select: none;
-  }
+#vid {
+  position:fixed; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  /* NO mirror transform - rear camera natural */
+}
+#cv {
+  position:fixed; inset:0;
+  width:100%; height:100%;
+  pointer-events:none;
+}
 
-  #video {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    z-index: 0;
-  }
+#hud {
+  position:fixed; top:0; left:0; right:0; z-index:20;
+  padding:14px 18px 10px;
+  background:linear-gradient(180deg,rgba(0,0,0,.8) 0%,transparent 100%);
+  display:flex; align-items:center; justify-content:space-between;
+  pointer-events:none;
+}
+#logo { color:#00ffcc; font-size:13px; letter-spacing:5px; font-weight:bold; }
+#srow { display:flex; align-items:center; gap:8px; }
+#dot  { width:8px; height:8px; border-radius:50%; background:#444; }
+#dot.on  { background:#00ffcc; box-shadow:0 0 8px #00ffcc; }
+#dot.err { background:#ff4444; box-shadow:0 0 8px #ff4444; }
+#stxt { font-size:11px; color:rgba(255,255,255,.5); letter-spacing:1px; }
 
-  #canvas {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 1;
-    pointer-events: none;
-  }
+#hints {
+  position:fixed; bottom:0; left:0; right:0; z-index:20;
+  padding:12px 10px 18px;
+  background:linear-gradient(0deg,rgba(0,0,0,.85) 0%,transparent 100%);
+  display:flex; flex-wrap:wrap; gap:7px; justify-content:center;
+  pointer-events:none;
+}
+.h {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:5px 11px; font-size:11px;
+  color:rgba(255,255,255,.6); letter-spacing:.4px;
+}
 
-  #overlay {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 2;
-    pointer-events: none;
-  }
+#flash {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:30; pointer-events:none;
+  font-size:22px; font-weight:bold; letter-spacing:4px;
+  opacity:0; transition:opacity .15s;
+}
+#flash.show { opacity:1; }
 
-  /* HUD top bar */
-  #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    padding: 12px 20px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 10;
-  }
+#yt { position:fixed; inset:0; z-index:50; display:none; flex-direction:column; background:#0f0f0f; }
+#yt.open { display:flex; }
+#ytbar { background:#1a1a1a; border-bottom:1px solid #333; padding:10px 16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+#ytbar b { color:#fff; font-size:14px; letter-spacing:1px; flex:1; }
+#ytbar span { color:rgba(255,255,255,.3); font-size:11px; }
+#ytf { flex:1; border:none; width:100%; }
 
-  #logo {
-    font-size: 13px;
-    font-weight: bold;
-    color: #00ffcc;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-  }
+#loader {
+  position:fixed; inset:0; z-index:100; background:#000;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+}
+#lt { font-size:26px; font-weight:bold; color:#00ffcc; letter-spacing:6px; text-shadow:0 0 30px #00ffcc; }
+#ls { font-size:11px; color:rgba(255,255,255,.4); letter-spacing:3px; }
+#lb-o { width:200px; height:2px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
+#lb-i { height:100%; width:0%; background:#00ffcc; box-shadow:0 0 6px #00ffcc; transition:width .35s; }
+#lm { font-size:11px; color:rgba(255,255,255,.35); letter-spacing:1px; text-align:center; padding:0 24px; min-height:30px; }
+#retry-btn {
+  display:none; background:#00ffcc; color:#000; border:none;
+  padding:12px 28px; font-size:13px; font-weight:bold; letter-spacing:3px;
+  border-radius:30px; cursor:pointer; font-family:'Courier New',monospace;
+}
 
-  #status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #ff3b3b;
-    box-shadow: 0 0 8px #ff3b3b;
-    animation: pulse 1.5s infinite;
-  }
-  #status-dot.active { background: #00ffcc; box-shadow: 0 0 8px #00ffcc; }
-
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-  #status-text { font-size: 11px; color: rgba(255,255,255,0.6); letter-spacing: 1px; }
-
-  /* Gesture instruction panel */
-  #gesture-panel {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    padding: 16px 20px 24px;
-    background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
-    z-index: 10;
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .gesture-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px;
-    padding: 6px 12px;
-    font-size: 11px;
-    color: rgba(255,255,255,0.7);
-    letter-spacing: 0.5px;
-  }
-  .gesture-hint .icon { font-size: 16px; }
-
-  /* Gesture feedback */
-  #gesture-feedback {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 15;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
-    text-align: center;
-  }
-  #gesture-feedback.show { opacity: 1; }
-
-  #gesture-label {
-    font-size: 20px;
-    font-weight: bold;
-    color: #00ffcc;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    text-shadow: 0 0 20px #00ffcc;
-  }
-
-  /* Progress ring for hold gestures */
-  #progress-ring-container {
-    position: fixed;
-    z-index: 20;
-    pointer-events: none;
-    display: none;
-  }
-
-  #progress-ring-container svg { overflow: visible; }
-
-  /* YouTube iframe overlay */
-  #yt-container {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 50;
-    display: none;
-    flex-direction: column;
-    background: #0f0f0f;
-  }
-
-  #yt-container.visible { display: flex; }
-
-  #yt-bar {
-    background: #1a1a1a;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid #333;
-    flex-shrink: 0;
-  }
-
-  #yt-bar-title {
-    font-size: 14px;
-    color: #fff;
-    font-weight: bold;
-    flex: 1;
-    letter-spacing: 1px;
-  }
-
-  #yt-close-hint {
-    font-size: 11px;
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 1px;
-  }
-
-  #yt-iframe {
-    flex: 1;
-    border: none;
-    width: 100%;
-  }
-
-  /* Cursor dot at index finger tip */
-  #finger-cursor {
-    position: fixed;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: rgba(0, 255, 204, 0.6);
-    border: 2px solid #00ffcc;
-    box-shadow: 0 0 12px #00ffcc;
-    transform: translate(-50%, -50%);
-    z-index: 30;
-    pointer-events: none;
-    transition: transform 0.05s, background 0.1s;
-    display: none;
-  }
-  #finger-cursor.pinch {
-    background: rgba(255, 60, 60, 0.8);
-    border-color: #ff3c3c;
-    box-shadow: 0 0 20px #ff3c3c;
-    transform: translate(-50%, -50%) scale(1.5);
-  }
-
-  /* Loading screen */
-  #loading-screen {
-    position: fixed;
-    inset: 0;
-    background: #000;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-  }
-
-  #loading-title {
-    font-size: 28px;
-    font-weight: bold;
-    color: #00ffcc;
-    letter-spacing: 6px;
-    text-transform: uppercase;
-    text-shadow: 0 0 30px #00ffcc;
-  }
-
-  #loading-sub {
-    font-size: 12px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-  }
-
-  #loading-bar-outer {
-    width: 200px;
-    height: 2px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  #loading-bar-inner {
-    height: 100%;
-    width: 0%;
-    background: #00ffcc;
-    box-shadow: 0 0 8px #00ffcc;
-    transition: width 0.3s ease;
-  }
-
-  #loading-msg {
-    font-size: 11px;
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 2px;
-    min-height: 16px;
-  }
-
-  /* Permission request */
-  #permission-screen {
-    position: fixed;
-    inset: 0;
-    background: #000;
-    z-index: 100;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    padding: 32px;
-  }
-
-  #perm-icon { font-size: 56px; }
-  #perm-title { font-size: 22px; color: #fff; font-weight: bold; letter-spacing: 2px; text-align: center; }
-  #perm-desc { font-size: 13px; color: rgba(255,255,255,0.5); text-align: center; line-height: 1.8; max-width: 280px; letter-spacing: 0.5px; }
-  #perm-btn {
-    background: #00ffcc;
-    color: #000;
-    border: none;
-    padding: 14px 32px;
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    border-radius: 40px;
-    cursor: pointer;
-    font-family: 'Courier New', monospace;
-  }
-
-  .scan-line {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(0,255,204,0.4), transparent);
-    z-index: 5;
-    animation: scan 3s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes scan { from { top: -2px; } to { top: 100%; } }
-
-  /* Corner brackets */
-  .corner {
-    position: fixed;
-    width: 30px; height: 30px;
-    z-index: 8;
-    pointer-events: none;
-  }
-  .corner-tl { top: 50px; left: 10px; border-top: 2px solid rgba(0,255,204,0.4); border-left: 2px solid rgba(0,255,204,0.4); }
-  .corner-tr { top: 50px; right: 10px; border-top: 2px solid rgba(0,255,204,0.4); border-right: 2px solid rgba(0,255,204,0.4); }
-  .corner-bl { bottom: 90px; left: 10px; border-bottom: 2px solid rgba(0,255,204,0.4); border-left: 2px solid rgba(0,255,204,0.4); }
-  .corner-br { bottom: 90px; right: 10px; border-bottom: 2px solid rgba(0,255,204,0.4); border-right: 2px solid rgba(0,255,204,0.4); }
+.scanline {
+  position:fixed; left:0; right:0; height:1px; top:-1px; z-index:15;
+  background:linear-gradient(90deg,transparent,rgba(0,255,204,.3),transparent);
+  animation:scan 4s linear infinite; pointer-events:none;
+}
+@keyframes scan { to { top:100vh; } }
 </style>
 </head>
 <body>
 
-<!-- Loading -->
-<div id="loading-screen">
-  <div id="loading-title">AR HAND</div>
-  <div id="loading-sub">Gesture Interface v1.0</div>
-  <div id="loading-bar-outer"><div id="loading-bar-inner"></div></div>
-  <div id="loading-msg">Инициализация...</div>
+<div id="loader">
+  <div id="lt">AR HAND</div>
+  <div id="ls">GESTURE INTERFACE</div>
+  <div id="lb-o"><div id="lb-i"></div></div>
+  <div id="lm">Загрузка…</div>
+  <button id="retry-btn" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
 </div>
 
-<!-- Camera permission -->
-<div id="permission-screen">
-  <div id="perm-icon">📷</div>
-  <div id="perm-title">НУЖНА КАМЕРА</div>
-  <div id="perm-desc">Для жестового управления необходим доступ к камере телефона. Нажми разрешить в следующем диалоге.</div>
-  <button id="perm-btn" onclick="startCamera()">ВКЛЮЧИТЬ КАМЕРУ</button>
-</div>
+<video id="vid" playsinline autoplay muted></video>
+<canvas id="cv"></canvas>
+<div class="scanline"></div>
 
-<!-- Camera feed -->
-<video id="video" playsinline autoplay muted></video>
-<canvas id="canvas"></canvas>
-
-<!-- AR elements -->
-<div class="scan-line"></div>
-<div class="corner corner-tl"></div>
-<div class="corner corner-tr"></div>
-<div class="corner corner-bl"></div>
-<div class="corner corner-br"></div>
-
-<!-- HUD -->
 <div id="hud">
-  <div id="logo">AR HAND</div>
-  <div style="display:flex;align-items:center;gap:8px;">
-    <div id="status-dot"></div>
-    <div id="status-text">ОЖИДАНИЕ РУКИ</div>
-  </div>
+  <div id="logo">AR·HAND</div>
+  <div id="srow"><div id="dot"></div><span id="stxt">СТАРТ</span></div>
 </div>
 
-<!-- Gesture hints -->
-<div id="gesture-panel">
-  <div class="gesture-hint"><span class="icon">☝️</span> Указательный = курсор</div>
-  <div class="gesture-hint"><span class="icon">🤏</span> Щипок = нажать</div>
-  <div class="gesture-hint"><span class="icon">✌️</span> Два пальца = YouTube</div>
-  <div class="gesture-hint"><span class="icon">✊</span> Кулак = закрыть</div>
+<div id="hints">
+  <div class="h">☝️ указательный = курсор</div>
+  <div class="h">✌️ два пальца (держи) = YouTube</div>
+  <div class="h">🤏 щипок = клик</div>
+  <div class="h">✊ кулак (держи) = закрыть</div>
 </div>
 
-<!-- Finger cursor -->
-<div id="finger-cursor"></div>
+<div id="flash"></div>
 
-<!-- Gesture feedback -->
-<div id="gesture-feedback">
-  <div id="gesture-label">PINCH</div>
+<div id="yt">
+  <div id="ytbar"><b>▶ YOUTUBE</b><span>✊ держи кулак — закрыть</span></div>
+  <iframe id="ytf" src="about:blank" allow="autoplay;encrypted-media" allowfullscreen></iframe>
 </div>
 
-<!-- YouTube overlay -->
-<div id="yt-container">
-  <div id="yt-bar">
-    <div id="yt-bar-title">▶ YOUTUBE</div>
-    <div id="yt-close-hint">✊ КУЛАК — ЗАКРЫТЬ</div>
-  </div>
-  <iframe id="yt-iframe" src="about:blank" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-</div>
+<!-- TF + MediaPipe Hands (NON-module CDN build, works in local HTML on Android Chrome) -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
-let detector = null;
-let videoEl = document.getElementById('video');
-let canvasEl = document.getElementById('canvas');
-let ctx = canvasEl.getContext('2d');
-let animId = null;
-let ytOpen = false;
-let lastGesture = '';
-let gestureStartTime = 0;
-let gestureHoldMs = 600; // ms to hold gesture
-let feedbackTimeout = null;
-let fingerCursor = document.getElementById('finger-cursor');
+// ── refs ──────────────────────────────────────────────────────────────────────
+const vid   = document.getElementById('vid');
+const cv    = document.getElementById('cv');
+const ctx   = cv.getContext('2d');
+const dot   = document.getElementById('dot');
+const stxt  = document.getElementById('stxt');
+const flash = document.getElementById('flash');
+const lbI   = document.getElementById('lb-i');
+const lm    = document.getElementById('lm');
+const loader= document.getElementById('loader');
+const ytEl  = document.getElementById('yt');
+const ytF   = document.getElementById('ytf');
 
-// ─── Loading UI ──────────────────────────────────────────────────────────────
-function setLoading(pct, msg) {
-  document.getElementById('loading-bar-inner').style.width = pct + '%';
-  document.getElementById('loading-msg').textContent = msg;
+// ── helpers ───────────────────────────────────────────────────────────────────
+function setLoad(pct, msg){ lbI.style.width=pct+'%'; lm.textContent=msg; }
+
+let flt;
+function showFlash(txt, col){
+  flash.textContent=txt;
+  flash.style.color=col||'#00ffcc';
+  flash.style.textShadow='0 0 24px '+(col||'#00ffcc');
+  flash.classList.add('show');
+  clearTimeout(flt); flt=setTimeout(()=>flash.classList.remove('show'),1000);
 }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-async function init() {
-  setLoading(10, 'Загрузка TensorFlow...');
-  await tf.ready();
-  setLoading(30, 'Загрузка модели рук...');
+function resize(){ cv.width=window.innerWidth; cv.height=window.innerHeight; }
+window.addEventListener('resize', resize); resize();
 
-  try {
-    const model = handPoseDetection.SupportedModels.MediaPipeHands;
-    const config = {
-      runtime: 'tfjs',
-      modelType: 'lite',
-      maxHands: 1
-    };
-    detector = await handPoseDetection.createDetector(model, config);
-    setLoading(70, 'Модель загружена!');
-  } catch(e) {
-    setLoading(70, 'Ошибка модели: ' + e.message);
-    console.error(e);
-    return;
-  }
-
-  setLoading(80, 'Запрос камеры...');
-
-  // Check if we need permission prompt
-  try {
-    const perm = await navigator.permissions.query({ name: 'camera' });
-    if (perm.state === 'denied') {
-      showPermissionScreen();
-      return;
-    }
-  } catch(e) {}
-
-  await startCamera();
+// ── YouTube ───────────────────────────────────────────────────────────────────
+var ytOpen = false;
+function openYT(){
+  ytF.src='https://m.youtube.com/';
+  ytEl.classList.add('open'); ytOpen=true;
+  showFlash('▶ YOUTUBE','#ff0000');
+}
+function closeYT(){
+  ytEl.classList.remove('open'); ytF.src='about:blank'; ytOpen=false;
+  showFlash('✕ ЗАКРЫТО','#00ffcc');
 }
 
-function showPermissionScreen() {
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('permission-screen').style.display = 'flex';
-}
+// ── Skeleton drawing ──────────────────────────────────────────────────────────
+// MediaPipe Hands gives 21 landmarks normalized [0..1]
+// x=0 is LEFT of the VIDEO frame — since rear camera, no flip needed
 
-async function startCamera() {
-  document.getElementById('permission-screen').style.display = 'none';
-  document.getElementById('loading-screen').style.display = 'flex';
-  setLoading(85, 'Включение камеры...');
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment', // rear camera on phones
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    });
-    videoEl.srcObject = stream;
-    await new Promise(res => { videoEl.onloadedmetadata = res; });
-    await videoEl.play();
-    setLoading(100, 'Готово!');
-    setTimeout(() => {
-      document.getElementById('loading-screen').style.display = 'none';
-      fingerCursor.style.display = 'block';
-      requestAnimationFrame(detectLoop);
-    }, 400);
-  } catch(e) {
-    showPermissionScreen();
-  }
-}
-
-// ─── Resize canvas ───────────────────────────────────────────────────────────
-function resizeCanvas() {
-  canvasEl.width = window.innerWidth;
-  canvasEl.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-// ─── Landmark helpers ────────────────────────────────────────────────────────
-function lm(hand, i) {
-  // Landmarks are in video coords; we mirror them for display
-  const kp = hand.keypoints[i];
-  const vw = videoEl.videoWidth || 640;
-  const vh = videoEl.videoHeight || 480;
-  const sw = window.innerWidth;
-  const sh = window.innerHeight;
-
-  // Scale to screen
-  const x = (kp.x / vw) * sw;
-  const y = (kp.y / vh) * sh;
-  return { x, y };
-}
-
-function dist(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-// ─── Gesture recognition ─────────────────────────────────────────────────────
-/*
-  Keypoints (MediaPipe Hands):
-  0=wrist, 1=thumb_cmc, 2=thumb_mcp, 3=thumb_ip, 4=thumb_tip
-  5=index_mcp, 6=index_pip, 7=index_dip, 8=index_tip
-  9=middle_mcp, 10=middle_pip, 11=middle_dip, 12=middle_tip
-  13=ring_mcp, 14=ring_pip, 15=ring_dip, 16=ring_tip
-  17=pinky_mcp, 18=pinky_pip, 19=pinky_dip, 20=pinky_tip
-*/
-
-function isFingerExtended(hand, tipIdx, dipIdx, mcpIdx) {
-  const tip = lm(hand, tipIdx);
-  const dip = lm(hand, dipIdx);
-  const mcp = lm(hand, mcpIdx);
-  // tip should be farther from wrist than dip
-  const wrist = lm(hand, 0);
-  return dist(tip, wrist) > dist(dip, wrist) && dist(tip, wrist) > dist(mcp, wrist);
-}
-
-function recognizeGesture(hand) {
-  const index = isFingerExtended(hand, 8, 7, 5);
-  const middle = isFingerExtended(hand, 12, 11, 9);
-  const ring = isFingerExtended(hand, 16, 15, 13);
-  const pinky = isFingerExtended(hand, 20, 19, 17);
-  const thumb = lm(hand, 4);
-  const indexTip = lm(hand, 8);
-  const pinchDist = dist(thumb, indexTip);
-  const screenShort = Math.min(window.innerWidth, window.innerHeight);
-  const pinching = pinchDist < screenShort * 0.08;
-
-  if (!index && !middle && !ring && !pinky) return 'FIST';
-  if (index && middle && !ring && !pinky) return 'PEACE'; // ✌️ → open YouTube
-  if (index && !middle && !ring && !pinky && pinching) return 'PINCH';
-  if (index && !middle && !ring && !pinky) return 'POINT'; // cursor mode
-  return 'OTHER';
-}
-
-// ─── Draw skeleton ───────────────────────────────────────────────────────────
-const CONNECTIONS = [
-  [0,1],[1,2],[2,3],[3,4],
-  [0,5],[5,6],[6,7],[7,8],
-  [5,9],[9,10],[10,11],[11,12],
-  [9,13],[13,14],[14,15],[15,16],
-  [13,17],[17,18],[18,19],[19,20],
-  [0,17]
+var FC = ['#ff9933','#00ffcc','#33ddff','#bb66ff','#ff55aa'];
+var FSEG = [
+  {s:[[0,1],[1,2],[2,3],[3,4]],        c:'#ff9933'},
+  {s:[[0,5],[5,6],[6,7],[7,8]],         c:'#00ffcc'},
+  {s:[[5,9],[9,10],[10,11],[11,12]],    c:'#33ddff'},
+  {s:[[9,13],[13,14],[14,15],[15,16]], c:'#bb66ff'},
+  {s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'},
 ];
+var PALM=[[0,17],[5,9],[9,13],[13,17]];
+var TIPS=[4,8,12,16,20];
+var MCPS=[1,5,9,13,17];
 
-function drawHand(hand, gesture) {
-  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+function pt(lms,i){
+  return { x: lms[i].x * cv.width, y: lms[i].y * cv.height };
+}
 
-  // Color per gesture
-  const baseColor = gesture === 'PINCH' ? '#ff4444'
-                  : gesture === 'PEACE' ? '#ffe44d'
-                  : gesture === 'FIST'  ? '#ff8c00'
-                  : '#00ffcc';
+function drawHand(lms, gest){
+  ctx.clearRect(0,0,cv.width,cv.height);
 
-  // ── Finger color palette (one per ray: thumb, index, middle, ring, pinky)
-  const fingerColors = ['#ff9944', '#00ffcc', '#44ddff', '#aa88ff', '#ff66aa'];
-
-  // Bones grouped by finger for coloring
-  const fingers = [
-    [[0,1],[1,2],[2,3],[3,4]],           // thumb
-    [[0,5],[5,6],[6,7],[7,8]],            // index
-    [[5,9],[9,10],[10,11],[11,12]],       // middle
-    [[9,13],[13,14],[14,15],[15,16]],     // ring
-    [[13,17],[17,18],[18,19],[19,20]],    // pinky
-  ];
-  const palmConnections = [[0,17],[5,9],[9,13],[13,17]];
-
-  // ── 1. Draw glow outer bone (thick blurred)
-  ctx.save();
-  ctx.globalAlpha = 0.18;
-  fingers.forEach((segs, fi) => {
-    const c = fingerColors[fi];
-    ctx.strokeStyle = c;
-    ctx.lineWidth = 8;
-    ctx.shadowColor = c;
-    ctx.shadowBlur = 18;
-    ctx.lineCap = 'round';
-    segs.forEach(([a,b]) => {
-      const pa = lm(hand, a), pb = lm(hand, b);
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+  // 1. glow blobs
+  ctx.save(); ctx.globalAlpha=0.13; ctx.lineCap='round';
+  FSEG.forEach(function(f){
+    ctx.strokeStyle=f.c; ctx.lineWidth=14; ctx.shadowColor=f.c; ctx.shadowBlur=24;
+    f.s.forEach(function(ab){
+      var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
     });
-  });
-  ctx.restore();
+  }); ctx.restore();
 
-  // ── 2. Draw thin crisp bone lines
-  ctx.save();
-  ctx.lineCap = 'round';
-  fingers.forEach((segs, fi) => {
-    const c = fingerColors[fi];
-    segs.forEach(([a,b]) => {
-      const pa = lm(hand, a), pb = lm(hand, b);
-      // Outer white glow line
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
-      // Inner colored bone
-      ctx.strokeStyle = c;
-      ctx.lineWidth = 0.8;
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 4;
-      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+  // 2. palm lines
+  ctx.save(); ctx.lineCap='round';
+  PALM.forEach(function(ab){
+    var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
+    ctx.strokeStyle='rgba(0,255,200,0.22)'; ctx.lineWidth=0.7; ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+  });
+
+  // 3. bone lines
+  FSEG.forEach(function(f){
+    f.s.forEach(function(ab){
+      var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
+      // white ghost
+      ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.4; ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+      // color core
+      ctx.strokeStyle=f.c; ctx.lineWidth=0.8; ctx.shadowColor=f.c; ctx.shadowBlur=6;
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
     });
-  });
+  }); ctx.restore();
 
-  // Palm bones thin
-  palmConnections.forEach(([a,b]) => {
-    const pa = lm(hand, a), pb = lm(hand, b);
-    ctx.strokeStyle = 'rgba(0,255,204,0.3)';
-    ctx.lineWidth = 0.7;
-    ctx.shadowBlur = 2;
-    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
-  });
-  ctx.restore();
-
-  // ── 3. Draw joints (small hollow circles = cartilage)
+  // 4. joints
   ctx.save();
-  for (let i = 0; i < 21; i++) {
-    const p = lm(hand, i);
-    const isTip = [4,8,12,16,20].includes(i);
-    const isWrist = i === 0;
-    const isMcp = [1,5,9,13,17].includes(i);
+  for(var i=0;i<21;i++){
+    var p=pt(lms,i);
+    var col = i<=4?FC[0]:i<=8?FC[1]:i<=12?FC[2]:i<=16?FC[3]:FC[4];
 
-    // Figure out which finger color
-    let c = '#00ffcc';
-    if (i <= 4) c = fingerColors[0];
-    else if (i <= 8) c = fingerColors[1];
-    else if (i <= 12) c = fingerColors[2];
-    else if (i <= 16) c = fingerColors[3];
-    else c = fingerColors[4];
-
-    if (isTip) {
-      // Fingertips: bright filled dot + outer glow ring
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = c;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      // Outer ring
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (isWrist) {
-      // Wrist: double ring
-      ctx.shadowColor = baseColor;
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = baseColor;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.stroke();
-      ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.stroke();
-    } else if (isMcp) {
-      // Knuckles: medium hollow circle
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 8;
-      ctx.strokeStyle = c;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    if(TIPS.indexOf(i)>=0){
+      ctx.shadowColor=col; ctx.shadowBlur=18;
+      ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(p.x,p.y,4.5,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.lineWidth=0.9; ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,7.5,0,Math.PI*2); ctx.stroke();
+    } else if(i===0){
+      ctx.strokeStyle=col; ctx.lineWidth=1.2; ctx.shadowColor=col; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.stroke();
+      ctx.lineWidth=0.5;
+      ctx.beginPath(); ctx.arc(p.x,p.y,11,0,Math.PI*2); ctx.stroke();
+    } else if(MCPS.indexOf(i)>=0){
+      ctx.strokeStyle=col; ctx.lineWidth=1.1; ctx.shadowColor=col; ctx.shadowBlur=7;
+      ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
     } else {
-      // Intermediate joints: tiny filled dot
-      ctx.shadowColor = c;
-      ctx.shadowBlur = 5;
-      ctx.fillStyle = c;
-      ctx.globalAlpha = 0.8;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=4; ctx.globalAlpha=0.85;
+      ctx.beginPath(); ctx.arc(p.x,p.y,2.2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
     }
   }
   ctx.restore();
 
-  // ── 4. Special pinch indicator between thumb & index
-  if (gesture === 'PINCH') {
-    const t = lm(hand, 4), idx = lm(hand, 8);
+  // 5. pinch dash
+  if(gest==='PINCH'){
+    var t=pt(lms,4), ix=pt(lms,8);
     ctx.save();
-    ctx.strokeStyle = '#ff4444';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.shadowColor = '#ff4444';
-    ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(idx.x, idx.y); ctx.stroke();
+    ctx.strokeStyle='#ff4444'; ctx.lineWidth=1.2;
+    ctx.setLineDash([5,4]); ctx.shadowColor='#ff4444'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.moveTo(t.x,t.y); ctx.lineTo(ix.x,ix.y); ctx.stroke();
+    ctx.restore();
+  }
+
+  // 6. hold progress bar (bottom)
+  if((gest==='PEACE'||gest==='FIST') && holdG===gest){
+    var pct=Math.min(1,(Date.now()-holdStart)/HOLD_MS);
+    var bc=gest==='PEACE'?'#ffe44d':'#ff6633';
+    var bw=cv.width*0.55, bh=7, bx=(cv.width-bw)/2, by=cv.height-100;
+    ctx.save();
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,4); ctx.fill();
+    ctx.fillStyle=bc; ctx.shadowColor=bc; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.roundRect(bx,by,bw*pct,bh,4); ctx.fill();
     ctx.restore();
   }
 }
 
-// ─── Gesture feedback ────────────────────────────────────────────────────────
-function showFeedback(text) {
-  const el = document.getElementById('gesture-feedback');
-  document.getElementById('gesture-label').textContent = text;
-  el.classList.add('show');
-  clearTimeout(feedbackTimeout);
-  feedbackTimeout = setTimeout(() => el.classList.remove('show'), 900);
+// ── Gesture ───────────────────────────────────────────────────────────────────
+function dst(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+
+function fingerUp(lms,tip,dip,mcp){
+  var w=lms[0];
+  return dst(lms[tip],w)>dst(lms[dip],w) && dst(lms[tip],w)>dst(lms[mcp],w);
 }
 
-// ─── Open / Close YouTube ────────────────────────────────────────────────────
-function openYouTube() {
-  const ytContainer = document.getElementById('yt-container');
-  const iframe = document.getElementById('yt-iframe');
-  // Use YouTube trending / home
-  iframe.src = 'https://www.youtube.com/embed?listType=search&list=trending';
-  // Actually open full YT in iframe — note: YouTube blocks iframe embedding on some pages
-  // So we open the search results embed
-  ytContainer.classList.add('visible');
-  ytOpen = true;
-  showFeedback('YOUTUBE ОТКРЫТ');
+function getGest(lms){
+  var idx   = fingerUp(lms,8,7,5);
+  var mid   = fingerUp(lms,12,11,9);
+  var ring  = fingerUp(lms,16,15,13);
+  var pinky = fingerUp(lms,20,19,17);
+  var pinch = dst(lms[4],lms[8]) < 0.08;
+
+  if(!idx&&!mid&&!ring&&!pinky) return 'FIST';
+  if(idx&&mid&&!ring&&!pinky)   return 'PEACE';
+  if(idx&&!mid&&!ring&&!pinky&&pinch) return 'PINCH';
+  if(idx&&!mid&&!ring&&!pinky)  return 'POINT';
+  return 'OTHER';
 }
 
-function closeYouTube() {
-  const ytContainer = document.getElementById('yt-container');
-  const iframe = document.getElementById('yt-iframe');
-  ytContainer.classList.remove('visible');
-  iframe.src = 'about:blank';
-  ytOpen = false;
-  showFeedback('ЗАКРЫТО');
+// ── Hold ──────────────────────────────────────────────────────────────────────
+var holdG='', holdStart=0, lastTrig=0;
+var HOLD_MS=700;
+
+function tryTrigger(g){
+  var now=Date.now();
+  if(g!==holdG){ holdG=g; holdStart=now; return; }
+  if(now-holdStart>=HOLD_MS && now-lastTrig>1500){
+    lastTrig=now;
+    if(g==='PEACE'&&!ytOpen) openYT();
+    if(g==='FIST'&&ytOpen)   closeYT();
+    if(g==='PINCH') showFlash('● PINCH','#ff4444');
+  }
 }
 
-// ─── Detection loop ───────────────────────────────────────────────────────────
-let lastGestureTime = 0;
-let holdingGesture = '';
-let holdStartTime = 0;
+// ── MediaPipe Hands setup ─────────────────────────────────────────────────────
+var hands;
 
-async function detectLoop() {
-  if (videoEl.readyState >= 2) {
-    let hands = [];
-    try {
-      hands = await detector.estimateHands(videoEl, { flipHorizontal: false });
-    } catch(e) {}
+function initHands(){
+  hands = new Hands({locateFile: function(f){
+    return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/'+f;
+  }});
 
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 0,          // 0=lite, faster on mobile
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5
+  });
 
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
+  hands.onResults(function(res){
+    ctx.clearRect(0,0,cv.width,cv.height);
 
-    if (hands.length > 0) {
-      const hand = hands[0];
-      const gesture = recognizeGesture(hand);
-
-      statusDot.className = 'active';
-      statusText.textContent = gesture;
-
-      drawHand(hand, gesture);
-
-      // Move cursor to index finger tip
-      const indexTip = lm(hand, 8);
-      fingerCursor.style.left = indexTip.x + 'px';
-      fingerCursor.style.top = indexTip.y + 'px';
-      fingerCursor.className = gesture === 'PINCH' ? 'pinch' : '';
-
-      const now = Date.now();
-
-      // Hold-based gesture trigger
-      if (gesture === holdingGesture) {
-        const held = now - holdStartTime;
-        if (held >= gestureHoldMs && now - lastGestureTime > 1200) {
-          lastGestureTime = now;
-          triggerGestureAction(gesture);
-        }
-      } else {
-        holdingGesture = gesture;
-        holdStartTime = now;
-      }
-
+    if(res.multiHandLandmarks && res.multiHandLandmarks.length>0){
+      var lms  = res.multiHandLandmarks[0];
+      var gest = getGest(lms);
+      drawHand(lms, gest);
+      tryTrigger(gest);
+      dot.className='on'; stxt.textContent=gest;
     } else {
-      statusDot.className = '';
-      statusText.textContent = 'ОЖИДАНИЕ РУКИ';
-      fingerCursor.style.display = 'none';
-      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-      holdingGesture = '';
+      dot.className=''; stxt.textContent='НЕТ РУКИ'; holdG='';
     }
-
-    if (hands.length > 0) {
-      fingerCursor.style.display = 'block';
-    }
-  }
-
-  requestAnimationFrame(detectLoop);
+  });
 }
 
-function triggerGestureAction(gesture) {
-  if (gesture === 'PEACE') {
-    if (!ytOpen) {
-      openYouTube();
-    }
-  } else if (gesture === 'FIST') {
-    if (ytOpen) {
-      closeYouTube();
-    }
-  } else if (gesture === 'PINCH') {
-    showFeedback('PINCH ✓');
+// ── Camera + loop ─────────────────────────────────────────────────────────────
+var camera;
+
+function startLoop(){
+  // Use @mediapipe/camera_utils for clean frame pumping
+  // Fallback: manual requestAnimationFrame
+  var lastT=0;
+
+  function sendFrame(ts){
+    requestAnimationFrame(sendFrame);
+    if(vid.readyState<2||vid.paused) return;
+    if(ts-lastT < 33) return; // ~30fps cap
+    lastT=ts;
+    hands.send({image:vid}).catch(function(){});
+  }
+  requestAnimationFrame(sendFrame);
+}
+
+async function startCamera(){
+  var constraints={
+    video:{
+      facingMode:{exact:'environment'},
+      width:{ideal:1280}, height:{ideal:720}
+    },
+    audio:false
+  };
+  try{
+    var s=await navigator.mediaDevices.getUserMedia(constraints);
+    vid.srcObject=s;
+    await new Promise(function(r){ vid.onloadedmetadata=r; });
+    await vid.play();
+  } catch(e){
+    // fallback without exact facingMode
+    var s2=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    vid.srcObject=s2;
+    await new Promise(function(r){ vid.onloadedmetadata=r; });
+    await vid.play();
   }
 }
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-window.addEventListener('load', init);
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async function(){
+  try{
+    setLoad(20,'Инициализация MediaPipe…');
+    initHands();
+
+    setLoad(50,'Прогрев модели…');
+    // Warm up by loading (first call triggers WASM download)
+    await hands.initialize();
+
+    setLoad(75,'Включение камеры…');
+    await startCamera();
+
+    setLoad(100,'Готово!');
+    setTimeout(function(){
+      loader.style.display='none';
+      startLoop();
+    },300);
+
+  } catch(err){
+    setLoad(0,'Ошибка: '+err.message);
+    lm.style.color='#ff6666';
+    dot.className='err';
+    stxt.textContent='ОШИБКА';
+    document.getElementById('retry-btn').style.display='block';
+    console.error(err);
+  }
+})();
 </script>
 </body>
 </html>
