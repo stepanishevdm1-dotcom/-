@@ -4,53 +4,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>AR Hand Player</title>
-<!-- A-Frame для 3D/AR движка -->
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<!-- MediaPipe для распознавания жестов -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+*{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Courier New',monospace;}
 
-/* A-Frame сцена на весь экран */
-a-scene{position:fixed!important;inset:0!important;}
-.a-enter-vr,.a-enter-ar{display:none!important;}
+/* Camera video — задний фон */
+#vid{
+  position:fixed;inset:0;width:100%;height:100%;
+  object-fit:cover;z-index:0;
+}
 
-/* Скелет руки поверх всего */
+/* Three.js canvas — AR мир поверх камеры, прозрачный фон */
+#threecv{
+  position:fixed;inset:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;
+}
+
+/* Скелет руки */
 #cv{
   position:fixed;inset:0;width:100%;height:100%;
-  z-index:20;pointer-events:none;
+  z-index:2;pointer-events:none;
 }
 
-/* Курсор — кончик указательного пальца */
+/* Курсор */
 #cursor{
-  position:fixed;z-index:21;pointer-events:none;
+  position:fixed;z-index:3;pointer-events:none;
   width:22px;height:22px;border-radius:50%;
-  border:2px solid #00ffcc;
-  box-shadow:0 0 10px rgba(0,255,204,0.7);
-  transform:translate(-50%,-50%);
-  display:none;
-  transition:background .1s;
+  border:2px solid #00ffcc;box-shadow:0 0 10px rgba(0,255,204,0.7);
+  transform:translate(-50%,-50%);display:none;
 }
-#cursor.pinch{
-  background:rgba(0,255,204,0.4);
-  transform:translate(-50%,-50%) scale(0.7);
-}
+#cursor.pinch{background:rgba(0,255,204,0.4);transform:translate(-50%,-50%) scale(0.7);}
 
-/* Hold ring вокруг курсора */
-#holdring{
-  position:fixed;z-index:20;pointer-events:none;
-  transform:translate(-50%,-50%);
-  display:none;
-}
+/* Hold ring */
+#holdring{position:fixed;z-index:3;pointer-events:none;transform:translate(-50%,-50%);display:none;}
 
 /* HUD */
 #hud{
-  position:fixed;top:0;left:0;right:0;z-index:30;
+  position:fixed;top:0;left:0;right:0;z-index:10;
   padding:12px 16px 8px;
-  background:linear-gradient(180deg,rgba(0,0,0,.75)0%,transparent 100%);
-  display:flex;align-items:center;justify-content:space-between;
-  pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.8)0%,transparent 100%);
+  display:flex;align-items:center;justify-content:space-between;pointer-events:none;
 }
 #logo{color:#00ffcc;font-size:12px;letter-spacing:4px;font-weight:bold;}
 #srow{display:flex;align-items:center;gap:8px;}
@@ -59,107 +53,60 @@ a-scene{position:fixed!important;inset:0!important;}
 #dot.err{background:#ff4444;box-shadow:0 0 8px #ff4444;}
 #stxt{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;}
 
-/* Режим / подсказка */
 #modebar{
-  position:fixed;top:50px;left:50%;transform:translateX(-50%);
-  z-index:30;pointer-events:none;
-  background:rgba(0,0,0,0.6);border:1px solid rgba(0,255,204,0.35);
-  border-radius:20px;padding:5px 16px;
-  font-size:11px;color:#00ffcc;letter-spacing:2px;
-  backdrop-filter:blur(8px);white-space:nowrap;
+  position:fixed;top:50px;left:50%;transform:translateX(-50%);z-index:10;
+  background:rgba(0,0,0,0.65);border:1px solid rgba(0,255,204,0.3);
+  border-radius:20px;padding:5px 16px;font-size:11px;color:#00ffcc;
+  letter-spacing:2px;pointer-events:none;white-space:nowrap;
 }
 
-/* Нижние подсказки */
 #hints{
-  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  position:fixed;bottom:0;left:0;right:0;z-index:10;
   padding:10px 10px 16px;
   background:linear-gradient(0deg,rgba(0,0,0,.8)0%,transparent 100%);
-  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
-  pointer-events:none;transition:opacity .4s;
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none;
+  transition:opacity .4s;
 }
 #hints.hidden{opacity:0;}
-.h{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
-  border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,.5);}
+.h{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,.5);}
 
-/* Hold bar */
-#holdbar{
-  position:fixed;z-index:31;pointer-events:none;
-  bottom:86px;left:50%;transform:translateX(-50%);
-  width:60vw;display:none;
-}
+#holdbar{position:fixed;z-index:10;pointer-events:none;bottom:82px;left:50%;transform:translateX(-50%);width:60vw;display:none;}
 #holdtrack{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
 #holdfill{height:100%;width:0%;border-radius:3px;}
 
-/* Flash */
-#flash{
-  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:40;pointer-events:none;
-  font-size:18px;font-weight:bold;letter-spacing:3px;
-  opacity:0;transition:opacity .15s;text-align:center;line-height:1.7;
-}
+#flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;font-size:18px;font-weight:bold;letter-spacing:3px;opacity:0;transition:opacity .15s;text-align:center;line-height:1.7;}
 #flash.show{opacity:1;}
 
-/* Выбор файлов — fullscreen overlay */
-#filepick{
-  position:fixed;inset:0;z-index:35;
-  background:rgba(0,0,0,0.78);backdrop-filter:blur(10px);
-  display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-}
+/* Файлы overlay */
+#filepick{position:fixed;inset:0;z-index:15;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #filepick.show{display:flex;}
 #fp-title{font-size:15px;color:#00ffcc;letter-spacing:4px;}
-#fp-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;text-align:center;line-height:2;}
-#fp-btn{
-  background:rgba(0,255,204,0.1);border:1.5px solid rgba(0,255,204,0.5);
-  color:#00ffcc;border-radius:30px;padding:13px 30px;
-  font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;
-  font-family:'Courier New',monospace;
-}
+#fp-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;text-align:center;line-height:2;}
+#fp-btn{background:rgba(0,255,204,0.1);border:1.5px solid rgba(0,255,204,0.5);color:#00ffcc;border-radius:30px;padding:13px 30px;font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;font-family:'Courier New',monospace;}
 #file-input{display:none;}
 
-/* Список файлов — gesture navigation */
-#filelist-overlay{
-  position:fixed;inset:0;z-index:35;
-  background:rgba(0,0,0,0.78);backdrop-filter:blur(10px);
-  display:none;flex-direction:column;
-}
-#filelist-overlay.show{display:flex;}
-#fl-header{
-  padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,0.07);
-  font-size:12px;color:#00ffcc;letter-spacing:3px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-#fl-hint{font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;}
+#filelist-ov{position:fixed;inset:0;z-index:15;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:none;flex-direction:column;}
+#filelist-ov.show{display:flex;}
+#fl-hdr{padding:14px 18px 10px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:12px;color:#00ffcc;letter-spacing:3px;display:flex;align-items:center;justify-content:space-between;}
+#fl-hint-txt{font-size:10px;color:rgba(255,255,255,.3);}
 #fl-items{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0;}
 #fl-items::-webkit-scrollbar{display:none;}
-.fl-item{
-  display:flex;align-items:center;gap:12px;
-  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.05);
-  position:relative;overflow:hidden;
-}
+.fl-item{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden;}
 .fl-item.hover{border-left:2px solid rgba(0,255,204,0.7);background:rgba(0,255,204,0.06);}
 .fl-icon{font-size:20px;flex-shrink:0;}
 .fl-name{flex:1;font-size:13px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fl-dwell{
-  position:absolute;left:0;top:0;bottom:0;width:0%;
-  background:rgba(0,255,204,0.1);pointer-events:none;
-  transition:width .05s linear;
-}
+.fl-dwell{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(0,255,204,0.1);pointer-events:none;}
 
 /* Loader */
-#loader{
-  position:fixed;inset:0;z-index:100;background:#000;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-}
+#loader{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
 #lt{font-size:24px;font-weight:bold;color:#00ffcc;letter-spacing:6px;text-shadow:0 0 30px #00ffcc;}
 #ls{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:3px;}
 #lb-o{width:200px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 #lb-i{height:100%;width:0%;background:#00ffcc;box-shadow:0 0 6px #00ffcc;transition:width .3s;}
 #lm{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;text-align:center;padding:0 24px;min-height:28px;}
-#retry-btn{display:none;background:#00ffcc;color:#000;border:none;padding:12px 28px;
-  font-size:13px;font-weight:bold;letter-spacing:3px;border-radius:30px;cursor:pointer;font-family:'Courier New',monospace;}
-.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:22;
-  background:linear-gradient(90deg,transparent,rgba(0,255,204,.2),transparent);
-  animation:scan 4s linear infinite;pointer-events:none;}
+#retry-btn{display:none;background:#00ffcc;color:#000;border:none;padding:12px 28px;font-size:13px;font-weight:bold;letter-spacing:3px;border-radius:30px;cursor:pointer;font-family:'Courier New',monospace;}
+
+.scanline{position:fixed;left:0;right:0;height:1px;top:-1px;z-index:5;background:linear-gradient(90deg,transparent,rgba(0,255,204,.2),transparent);animation:scan 4s linear infinite;pointer-events:none;}
 @keyframes scan{to{top:100vh;}}
 </style>
 </head>
@@ -173,26 +120,11 @@ a-scene{position:fixed!important;inset:0!important;}
   <button id="retry-btn" onclick="location.reload()">ПЕРЕЗАГРУЗИТЬ</button>
 </div>
 
-<!-- A-Frame сцена: задняя камера + 3D мир -->
-<a-scene
-  embedded
-  vr-mode-ui="enabled:false"
-  renderer="antialias:true"
-  id="arscene">
-  <!-- Камера -->
-  <a-entity id="rig" position="0 0 0">
-    <a-camera id="cam" look-controls="enabled:true" wasd-controls="enabled:false"
-              near="0.01" far="100">
-    </a-camera>
-  </a-entity>
-  <a-entity light="type:ambient;intensity:0.8"></a-entity>
-</a-scene>
-
-<!-- Hand skeleton canvas — поверх 3D сцены -->
+<video id="vid" playsinline autoplay muted></video>
+<canvas id="threecv"></canvas>
 <canvas id="cv"></canvas>
 <div class="scanline"></div>
 
-<!-- Cursor dot -->
 <div id="cursor"></div>
 <svg id="holdring" width="56" height="56" viewBox="0 0 56 56">
   <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(0,255,204,0.15)" stroke-width="2"/>
@@ -201,47 +133,51 @@ a-scene{position:fixed!important;inset:0!important;}
     transform="rotate(-90 28 28)"/>
 </svg>
 
-<!-- HUD -->
 <div id="hud">
   <div id="logo">AR·HAND</div>
   <div id="srow"><div id="dot"></div><span id="stxt">СТАРТ</span></div>
 </div>
 <div id="modebar">НАВЕДИ РУКУ</div>
 <div id="hints">
-  <div class="h">✌️ держи → файлы</div>
-  <div class="h">☝️ навести → выбрать</div>
+  <div class="h">✌️ держи → открыть файлы</div>
+  <div class="h">☝️ наведи → выбрать</div>
   <div class="h">✊ держи → пауза</div>
   <div class="h">✌️ держи (играет) → переместить</div>
 </div>
 <div id="holdbar"><div id="holdtrack"><div id="holdfill"></div></div></div>
 <div id="flash"></div>
 
-<!-- File pick screen -->
 <div id="filepick">
-  <div id="fp-title">◈ ВЫБЕРИ ВИДЕО</div>
-  <div id="fp-sub">Видео появится в твоей комнате.<br>Оно будет держаться в пространстве.</div>
-  <button id="fp-btn" onclick="document.getElementById('file-input').click()">＋ ОТКРЫТЬ ФАЙЛЫ</button>
+  <div id="fp-title">◈ ВИДЕО ПЛЕЕР</div>
+  <div id="fp-sub">Выбери видео с телефона.<br>Оно зависнет в комнате.</div>
+  <button id="fp-btn" onclick="document.getElementById('file-input').click()">＋ ВЫБРАТЬ ВИДЕО</button>
   <input id="file-input" type="file" accept="video/*,audio/*" multiple>
 </div>
 
-<!-- File list — gesture navigation -->
-<div id="filelist-overlay">
-  <div id="fl-header">
+<div id="filelist-ov">
+  <div id="fl-hdr">
     <span>◈ ВИДЕО</span>
-    <span id="fl-hint">наведи ☝️ и держи → открыть</span>
+    <span id="fl-hint-txt">наведи ☝️ и держи → открыть</span>
   </div>
   <div id="fl-items"></div>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════════════════
-// AR HAND SPATIAL PLAYER
-// — A-Frame рендерит 3D видео-панель в пространстве комнаты
-// — Видео всегда поворачивается к камере (billboarding)
-// — MediaPipe Hands управляет всем через жесты
-// ═══════════════════════════════════════════════════════════════════
+<!-- Three.js r128 — без модулей, работает локально -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-// ── DOM ──────────────────────────────────────────────────────────────
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// АРХИТЕКТУРА:
+// 1. <video id="vid">  — задняя камера, фон
+// 2. Three.js renderer (threecv, прозрачный) — 3D панель с видео в пространстве
+// 3. <canvas id="cv">  — скелет руки (2D)
+// 4. MediaPipe Hands   — жесты управляют всем
+// 5. Видео панель: THREE.Mesh с VideoTexture, billboarding каждые 40мс
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── DOM ───────────────────────────────────────────────────────────────────
+var vid      = document.getElementById('vid');
+var threecv  = document.getElementById('threecv');
 var cv       = document.getElementById('cv');
 var ctx      = cv.getContext('2d');
 var cursor   = document.getElementById('cursor');
@@ -252,145 +188,175 @@ var stxt     = document.getElementById('stxt');
 var modebar  = document.getElementById('modebar');
 var hb       = document.getElementById('holdbar');
 var hf       = document.getElementById('holdfill');
+var loader   = document.getElementById('loader');
+var lbI      = document.getElementById('lb-i');
+var lmEl     = document.getElementById('lm');
 
-// ── Canvas resize ────────────────────────────────────────────────────
-function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
-window.addEventListener('resize',resize);resize();
+function setLoad(p,m){ lbI.style.width=p+'%'; lmEl.textContent=m; }
 
-// ── Flash ─────────────────────────────────────────────────────────────
+// ── Resize ────────────────────────────────────────────────────────────────
+function resize(){
+  cv.width = threecv.width = window.innerWidth;
+  cv.height= threecv.height= window.innerHeight;
+  if(renderer){
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+}
+window.addEventListener('resize', resize);
+
+// ── Flash ─────────────────────────────────────────────────────────────────
 var flt;
 function showFlash(txt,col){
   var f=document.getElementById('flash');
-  f.innerHTML=txt;f.style.color=col||'#00ffcc';
+  f.innerHTML=txt; f.style.color=col||'#00ffcc';
   f.style.textShadow='0 0 24px '+(col||'#00ffcc');
-  f.classList.add('show');clearTimeout(flt);
-  flt=setTimeout(function(){f.classList.remove('show');},1200);
+  f.classList.add('show'); clearTimeout(flt);
+  flt=setTimeout(function(){ f.classList.remove('show'); },1200);
 }
 
-// ── Loader ───────────────────────────────────────────────────────────
-var loader=document.getElementById('loader');
-var lbI=document.getElementById('lb-i'),lmEl=document.getElementById('lm');
-function setLoad(p,m){lbI.style.width=p+'%';lmEl.textContent=m;}
-
-// ── Camera для A-Frame сцены (задняя) ────────────────────────────────
-// A-Frame сам запрашивает камеру через look-controls.
-// Дополнительно запустим задний поток для MediaPipe.
-var camStream=null;
-var mpVideo=document.createElement('video');
-mpVideo.playsInline=true;mpVideo.autoplay=true;mpVideo.muted=true;
-
-async function startRearCamera(){
-  var opts=[
-    {video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},
-    {video:{facingMode:'environment'},audio:false}
-  ];
-  for(var i=0;i<opts.length;i++){
-    try{
-      camStream=await navigator.mediaDevices.getUserMedia(opts[i]);
-      mpVideo.srcObject=camStream;
-      return new Promise(function(r){mpVideo.onloadedmetadata=function(){mpVideo.play().then(r);};});
-    }catch(e){}
-  }
-  throw new Error('Камера недоступна');
-}
-
-// ── 3D Видео-панель (Three.js через A-Frame) ──────────────────────────
-// Заимствован принцип из референсного файла:
-// — videoContainer = THREE.Group в сцене
-// — updateVideoRotation: каждые 50мс поворачиваем к камере
-var scene3d=null;
-var camera3d=null;
-var videoContainer=null;
-var videoMesh=null;
-var videoTexture=null;
-var videoEl=null;
-var rotInterval=null;
-var panelW=2.0, panelH=1.125; // 16:9
+// ── Three.js setup ────────────────────────────────────────────────────────
+var renderer, scene3, camera, videoMesh, videoContainer, videoTexture, billboardId;
 
 function initThree(){
-  var aScene=document.getElementById('arscene');
-  scene3d=aScene.object3D;
-  camera3d=document.getElementById('cam').object3D;
+  renderer = new THREE.WebGLRenderer({
+    canvas: threecv,
+    alpha: true,          // прозрачный фон — камера видна сквозь
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0); // полностью прозрачный
+
+  scene3 = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth/window.innerHeight,
+    0.01, 100
+  );
+  camera.position.set(0,0,0);
+  scene3.add(camera);
+
+  scene3.add(new THREE.AmbientLight(0xffffff, 1));
+
+  // Рендер-петля Three.js
+  (function renderLoop(){
+    requestAnimationFrame(renderLoop);
+    renderer.render(scene3, camera);
+  })();
 }
 
-// Обновление поворота — панель всегда смотрит в камеру (billboard)
+// Поворот панели к камере (billboard) — запускается отдельным интервалом
 function startBillboard(){
-  if(rotInterval) clearInterval(rotInterval);
-  rotInterval=setInterval(function(){
-    if(!videoContainer||!camera3d) return;
-    var camPos=new THREE.Vector3();
-    camera3d.getWorldPosition(camPos);
+  if(billboardId) clearInterval(billboardId);
+  billboardId = setInterval(function(){
+    if(!videoContainer) return;
+    var camPos = new THREE.Vector3();
+    camera.getWorldPosition(camPos);
     videoContainer.lookAt(camPos);
-  },40);
-}
-
-function stopBillboard(){
-  if(rotInterval){clearInterval(rotInterval);rotInterval=null;}
+  }, 40);
 }
 
 // Разместить/переместить панель перед камерой
 function placePanel(){
-  if(!videoEl||!videoTexture) return;
+  if(!videoElAR || !videoTexture) return;
+
+  var dist = 2.2; // метры перед камерой
 
   if(!videoContainer){
-    // Первое размещение — создаём геометрию
-    videoContainer=new THREE.Group();
-    scene3d.add(videoContainer);
+    // Первое создание
+    videoContainer = new THREE.Group();
+    scene3.add(videoContainer);
 
-    var geo=new THREE.PlaneGeometry(panelW,panelH);
-    var mat=new THREE.MeshBasicMaterial({
-      map:videoTexture,
-      side:THREE.DoubleSide,
-      transparent:false
-    });
-    videoMesh=new THREE.Mesh(geo,mat);
+    var pw = 1.8, ph = pw*(videoElAR.videoHeight||9)/(videoElAR.videoWidth||16);
+    if(!videoElAR.videoWidth){ pw=1.8; ph=1.0125; }
+
+    var geo = new THREE.PlaneGeometry(pw, ph);
+    var mat = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
+    videoMesh = new THREE.Mesh(geo, mat);
     videoContainer.add(videoMesh);
 
-    // Тонкая рамка
-    var edgesGeo=new THREE.EdgesGeometry(geo);
-    var edgesMat=new THREE.LineBasicMaterial({color:0x00ffcc,transparent:true,opacity:0.4});
-    videoContainer.add(new THREE.LineSegments(edgesGeo,edgesMat));
+    // Светящаяся рамка
+    var edgeGeo = new THREE.EdgesGeometry(geo);
+    var edgeMat = new THREE.LineBasicMaterial({ color:0x00ffcc, transparent:true, opacity:0.5 });
+    videoContainer.add(new THREE.LineSegments(edgeGeo, edgeMat));
 
     startBillboard();
   }
 
-  // Позиционируем на 2.5м перед камерой
-  var camPos=new THREE.Vector3();
-  camera3d.getWorldPosition(camPos);
-  var camDir=new THREE.Vector3();
-  camera3d.getWorldDirection(camDir);
-  var targetPos=camPos.clone().add(camDir.multiplyScalar(2.5));
-  videoContainer.position.copy(targetPos);
+  // Позиция: dist метров по направлению взгляда камеры
+  var dir = new THREE.Vector3(0,0,-1);
+  dir.applyQuaternion(camera.quaternion);
+  var pos = camera.position.clone().addScaledVector(dir, dist);
+  videoContainer.position.copy(pos);
 
-  // Воспроизводим
-  videoEl.muted=false;
-  videoEl.play().catch(function(){videoEl.muted=true;videoEl.play().catch(function(){});});
+  videoElAR.muted = false;
+  videoElAR.play().catch(function(){
+    videoElAR.muted = true;
+    videoElAR.play().catch(function(){});
+  });
 }
 
-// ── Файлы ─────────────────────────────────────────────────────────────
-var files=[];
-var currentMode='idle'; // idle | filelist | playing
+// ── DeviceOrientation → вращаем camera ────────────────────────────────────
+// Это и есть "держится в пространстве":
+// когда двигаешь телефон — камера вращается → видео остаётся на месте в 3D
 
-document.getElementById('file-input').addEventListener('change',function(e){
+var euler = new THREE.Euler(0,0,0,'YXZ');
+var alphaOffset = null;
+
+window.addEventListener('deviceorientation', function(e){
+  if(e.alpha === null) return;
+
+  // Первый вызов — запоминаем смещение чтобы начать с нуля
+  if(alphaOffset === null) alphaOffset = e.alpha;
+
+  var alpha = THREE.MathUtils.degToRad(e.alpha - alphaOffset); // yaw
+  var beta  = THREE.MathUtils.degToRad(e.beta);                // pitch
+  var gamma = THREE.MathUtils.degToRad(e.gamma);               // roll
+
+  euler.set(beta, alpha, -gamma, 'YXZ');
+  camera.quaternion.setFromEuler(euler);
+});
+
+// iOS 13+ — запрос разрешения на гироскоп
+function requestGyro(){
+  if(typeof DeviceOrientationEvent !== 'undefined' &&
+     typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(function(r){
+      if(r==='granted') console.log('Gyro granted');
+    }).catch(function(){});
+  }
+}
+
+// ── Файлы ─────────────────────────────────────────────────────────────────
+var files = [];
+var currentMode = 'idle';
+var videoElAR = null;
+
+document.getElementById('file-input').addEventListener('change', function(e){
   Array.from(e.target.files).forEach(function(f){
-    files.push({name:f.name,url:URL.createObjectURL(f)});
+    files.push({ name:f.name, url:URL.createObjectURL(f) });
   });
-  this.value='';
+  this.value = '';
   if(files.length) showFileList();
 });
 
 function showFilePick(){
   currentMode='pick';
   document.getElementById('filepick').classList.add('show');
+  document.getElementById('filelist-ov').classList.remove('show');
   modebar.textContent='ВЫБЕРИ ФАЙЛ';
   document.getElementById('hints').classList.add('hidden');
 }
 
 function showFileList(){
   document.getElementById('filepick').classList.remove('show');
-  document.getElementById('filelist-overlay').classList.add('show');
+  document.getElementById('filelist-ov').classList.add('show');
   currentMode='filelist';
   modebar.textContent='НАВЕДИ РУКУ НА ВИДЕО';
+  document.getElementById('hints').classList.remove('hidden');
   renderFileList();
 }
 
@@ -399,7 +365,7 @@ function renderFileList(){
   el.innerHTML='';
   files.forEach(function(f,i){
     var item=document.createElement('div');
-    item.className='fl-item';item.dataset.idx=i;
+    item.className='fl-item'; item.dataset.idx=i;
     item.innerHTML=
       '<div class="fl-dwell"></div>'+
       '<div class="fl-icon">🎬</div>'+
@@ -410,44 +376,42 @@ function renderFileList(){
 
 function selectFile(idx){
   var f=files[idx];
-  // Создаём video element
-  if(videoEl){videoEl.pause();URL.revokeObjectURL(videoEl.src);}
-  videoEl=document.createElement('video');
-  videoEl.src=f.url;videoEl.loop=true;videoEl.playsInline=true;videoEl.muted=true;
-  videoEl.load();
+  if(videoElAR){ videoElAR.pause(); }
 
-  videoEl.addEventListener('loadeddata',function(){
-    if(videoTexture){videoTexture.dispose();}
-    videoTexture=new THREE.VideoTexture(videoEl);
-    videoTexture.minFilter=THREE.LinearFilter;
-    videoTexture.magFilter=THREE.LinearFilter;
+  videoElAR = document.createElement('video');
+  videoElAR.src = f.url;
+  videoElAR.loop = true;
+  videoElAR.playsInline = true;
+  videoElAR.muted = true;
+  videoElAR.load();
 
-    // Подгоняем соотношение сторон
-    var ar=videoEl.videoWidth/videoEl.videoHeight;
-    panelW=ar>1?2.0:2.0*ar;
-    panelH=panelW/ar;
+  videoElAR.addEventListener('loadeddata', function(){
+    if(videoTexture) videoTexture.dispose();
+    videoTexture = new THREE.VideoTexture(videoElAR);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
 
-    // Если панель уже существует — обновляем геометрию
-    if(videoMesh){
-      var newGeo=new THREE.PlaneGeometry(panelW,panelH);
-      videoMesh.geometry.dispose();
-      videoMesh.geometry=newGeo;
-      videoMesh.material.map=videoTexture;
-      videoMesh.material.needsUpdate=true;
+    // Пересоздаём меш если уже был
+    if(videoContainer){
+      scene3.remove(videoContainer);
+      videoContainer = null;
+      videoMesh = null;
     }
 
-    document.getElementById('filelist-overlay').classList.remove('show');
-    currentMode='playing';
-    modebar.textContent='✌️ держи → переместить';
+    document.getElementById('filelist-ov').classList.remove('show');
+    currentMode = 'playing';
+    modebar.textContent = '✌️ держи → переместить';
     document.getElementById('hints').classList.remove('hidden');
+
+    requestGyro(); // iOS
     placePanel();
     showFlash('▶ '+f.name.slice(0,22),'#00ffcc');
-  },{once:true});
+  }, {once:true});
 }
 
-function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ── Скелет руки ───────────────────────────────────────────────────────
+// ── Скелет руки ───────────────────────────────────────────────────────────
 var FC=['#ff9933','#00ffcc','#33ddff','#bb66ff','#ff55aa'];
 var FSEG=[
   {s:[[0,1],[1,2],[2,3],[3,4]],c:'#ff9933'},
@@ -457,71 +421,71 @@ var FSEG=[
   {s:[[13,17],[17,18],[18,19],[19,20]],c:'#ff55aa'}
 ];
 var PALM=[[0,17],[5,9],[9,13],[13,17]];
-var TIPS=[4,8,12,16,20],MCPS=[1,5,9,13,17];
+var TIPS=[4,8,12,16,20], MCPS=[1,5,9,13,17];
 
-function pt(lms,i){return{x:lms[i].x*cv.width,y:lms[i].y*cv.height};}
-function dst(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function pt(lms,i){ return{x:lms[i].x*cv.width, y:lms[i].y*cv.height}; }
+function dst(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
 
 function drawHand(lms,gest){
   ctx.clearRect(0,0,cv.width,cv.height);
   // glow
-  ctx.save();ctx.globalAlpha=0.11;ctx.lineCap='round';
+  ctx.save(); ctx.globalAlpha=0.11; ctx.lineCap='round';
   FSEG.forEach(function(f){
-    ctx.strokeStyle=f.c;ctx.lineWidth=13;ctx.shadowColor=f.c;ctx.shadowBlur=22;
-    f.s.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
-  });ctx.restore();
+    ctx.strokeStyle=f.c; ctx.lineWidth=13; ctx.shadowColor=f.c; ctx.shadowBlur=22;
+    f.s.forEach(function(ab){ var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]); ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke(); });
+  }); ctx.restore();
   // palm
-  ctx.save();ctx.lineCap='round';
-  PALM.forEach(function(ab){var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);ctx.strokeStyle='rgba(0,255,200,0.16)';ctx.lineWidth=0.7;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();});
+  ctx.save(); ctx.lineCap='round';
+  PALM.forEach(function(ab){ var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]); ctx.strokeStyle='rgba(0,255,200,0.16)'; ctx.lineWidth=0.7; ctx.shadowBlur=0; ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke(); });
   // bones
   FSEG.forEach(function(f){
     f.s.forEach(function(ab){
       var pa=pt(lms,ab[0]),pb=pt(lms,ab[1]);
-      ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.3;ctx.shadowBlur=0;
-      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
-      ctx.strokeStyle=f.c;ctx.lineWidth=0.75;ctx.shadowColor=f.c;ctx.shadowBlur=5;
-      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.3; ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+      ctx.strokeStyle=f.c; ctx.lineWidth=0.75; ctx.shadowColor=f.c; ctx.shadowBlur=5;
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
     });
-  });ctx.restore();
+  }); ctx.restore();
   // joints
   ctx.save();
   for(var i=0;i<21;i++){
     var p=pt(lms,i);
     var col=i<=4?FC[0]:i<=8?FC[1]:i<=12?FC[2]:i<=16?FC[3]:FC[4];
     if(TIPS.indexOf(i)>=0){
-      ctx.shadowColor=col;ctx.shadowBlur=18;ctx.fillStyle=col;
-      ctx.beginPath();ctx.arc(p.x,p.y,4.5,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=0.9;ctx.shadowBlur=0;
-      ctx.beginPath();ctx.arc(p.x,p.y,7.5,0,Math.PI*2);ctx.stroke();
+      ctx.shadowColor=col; ctx.shadowBlur=18; ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(p.x,p.y,4.5,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=0.9; ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,7.5,0,Math.PI*2); ctx.stroke();
     } else if(i===0){
-      ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.shadowColor=col;ctx.shadowBlur=10;
-      ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.stroke();
-      ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(p.x,p.y,11,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle=col; ctx.lineWidth=1.2; ctx.shadowColor=col; ctx.shadowBlur=10;
+      ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.stroke();
+      ctx.lineWidth=0.5; ctx.beginPath(); ctx.arc(p.x,p.y,11,0,Math.PI*2); ctx.stroke();
     } else if(MCPS.indexOf(i)>=0){
-      ctx.strokeStyle=col;ctx.lineWidth=1.1;ctx.shadowColor=col;ctx.shadowBlur=7;
-      ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.stroke();
-      ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=col; ctx.lineWidth=1.1; ctx.shadowColor=col; ctx.shadowBlur=7;
+      ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
     } else {
-      ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=4;ctx.globalAlpha=0.82;
-      ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=4; ctx.globalAlpha=0.82;
+      ctx.beginPath(); ctx.arc(p.x,p.y,2.2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
     }
   }
   if(gest==='PINCH'){
     var t=pt(lms,4),ix=pt(lms,8);
-    ctx.strokeStyle='#ff4444';ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
-    ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(ix.x,ix.y);ctx.stroke();
+    ctx.strokeStyle='#ff4444'; ctx.lineWidth=1.2; ctx.setLineDash([5,4]); ctx.shadowColor='#ff4444'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.moveTo(t.x,t.y); ctx.lineTo(ix.x,ix.y); ctx.stroke();
   }
   ctx.restore();
 }
 
-// ── Жесты ─────────────────────────────────────────────────────────────
+// ── Жесты ─────────────────────────────────────────────────────────────────
 function fingerUp(lms,tip,dip,mcp){
-  var w=lms[0];var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};
-  return dw(lms[tip])>dw(lms[dip])&&dw(lms[tip])>dw(lms[mcp]);
+  var w=lms[0]; var dw=function(p){return Math.hypot(p.x-w.x,p.y-w.y);};
+  return dw(lms[tip])>dw(lms[dip]) && dw(lms[tip])>dw(lms[mcp]);
 }
 function getGest(lms){
-  var idx=fingerUp(lms,8,7,5),mid=fingerUp(lms,12,11,9),
-      ring=fingerUp(lms,16,15,13),pinky=fingerUp(lms,20,19,17);
+  var idx=fingerUp(lms,8,7,5), mid=fingerUp(lms,12,11,9),
+      ring=fingerUp(lms,16,15,13), pinky=fingerUp(lms,20,19,17);
   var pinch=dst(lms[4],lms[8])<0.08;
   if(!idx&&!mid&&!ring&&!pinky) return 'FIST';
   if(idx&&mid&&!ring&&!pinky)   return 'PEACE';
@@ -530,8 +494,8 @@ function getGest(lms){
   return 'OTHER';
 }
 
-// ── Dwell — наведение на файл в списке ────────────────────────────────
-var dwellTarget=null,dwellStart=0,DWELL_MS=900;
+// ── Dwell — выбор файла наведением ───────────────────────────────────────
+var dwellTarget=null, dwellStart=0, DWELL_MS=900;
 
 function updateDwell(fx,fy){
   if(currentMode!=='filelist') return;
@@ -542,67 +506,49 @@ function updateDwell(fx,fy){
     if(fx>=r.left&&fx<=r.right&&fy>=r.top&&fy<=r.bottom) hit=item;
   });
   if(hit){
-    items.forEach(function(i){i.classList.remove('hover');i.querySelector('.fl-dwell').style.width='0%';});
+    items.forEach(function(i){ i.classList.remove('hover'); i.querySelector('.fl-dwell').style.width='0%'; });
     hit.classList.add('hover');
-    if(dwellTarget!==hit){dwellTarget=hit;dwellStart=Date.now();}
+    if(dwellTarget!==hit){ dwellTarget=hit; dwellStart=Date.now(); }
     var pct=Math.min(1,(Date.now()-dwellStart)/DWELL_MS);
     hit.querySelector('.fl-dwell').style.width=(pct*100)+'%';
-    if(pct>=1){var idx=parseInt(hit.dataset.idx);dwellTarget=null;selectFile(idx);}
+    if(pct>=1){ var idx=parseInt(hit.dataset.idx); dwellTarget=null; selectFile(idx); }
   } else {
-    if(dwellTarget){dwellTarget.querySelector('.fl-dwell').style.width='0%';dwellTarget.classList.remove('hover');dwellTarget=null;}
+    if(dwellTarget){ dwellTarget.querySelector('.fl-dwell').style.width='0%'; dwellTarget.classList.remove('hover'); dwellTarget=null; }
   }
 }
 
-// ── Hold жест ─────────────────────────────────────────────────────────
-var holdG='',holdStart=0,lastTrig=0,HOLD_MS=750;
+// ── Hold ──────────────────────────────────────────────────────────────────
+var holdG='', holdStart=0, lastTrig=0, HOLD_MS=750;
 
 function tryHold(g,fx,fy){
   var now=Date.now();
-  if(g!==holdG){holdG=g;holdStart=now;hideRing();hb.style.display='none';return;}
+  if(g!==holdG){ holdG=g; holdStart=now; hideRing(); hb.style.display='none'; return; }
   var held=now-holdStart;
-  var needHold=(g==='PEACE')||(g==='FIST'&&currentMode==='playing');
-  if(needHold&&held>120){
+  var needsHold=(g==='PEACE')||(g==='FIST'&&currentMode==='playing');
+  if(needsHold&&held>100){
     var pct=Math.min(1,held/HOLD_MS);
-    // Ring
     showRing(fx,fy,pct);
-    // Bar
-    if(g==='FIST'){
-      hb.style.display='block';
-      var col='#ff6633';
-      hf.style.background=col;hf.style.boxShadow='0 0 8px '+col;
-      hf.style.width=(pct*100)+'%';
-    }
-  } else {hideRing();hb.style.display='none';}
-
+    if(g==='FIST'){ hb.style.display='block'; hf.style.background='#ff6633'; hf.style.boxShadow='0 0 8px #ff6633'; hf.style.width=(pct*100)+'%'; }
+  } else { hideRing(); hb.style.display='none'; }
   if(held>=HOLD_MS&&now-lastTrig>1500){
-    lastTrig=now;holdStart=now;hideRing();hb.style.display='none';
+    lastTrig=now; holdStart=now; hideRing(); hb.style.display='none';
     if(g==='PEACE'){
-      if(currentMode==='idle'||currentMode==='pick') showFilePick();
-      else if(currentMode==='filelist') showFilePick();
-      else if(currentMode==='playing'){
-        // Переместить видео
-        placePanel();
-        showFlash('📌 ПЕРЕМЕЩЕНО','#00ffcc');
-      }
+      if(currentMode==='idle'||currentMode==='pick'||currentMode==='filelist') showFilePick();
+      else if(currentMode==='playing'){ placePanel(); showFlash('📌 ПЕРЕМЕЩЕНО','#00ffcc'); }
     }
     if(g==='FIST'&&currentMode==='playing'){
-      if(videoEl){
-        if(videoEl.paused) videoEl.play().catch(function(){});
-        else videoEl.pause();
-        showFlash(videoEl.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc');
-      }
+      if(videoElAR){ if(videoElAR.paused) videoElAR.play().catch(function(){}); else videoElAR.pause(); showFlash(videoElAR.paused?'⏸ ПАУЗА':'▶ ИГРАЕТ','#00ffcc'); }
     }
   }
 }
 
 function showRing(x,y,pct){
-  holdring.style.display='block';
-  holdring.style.left=x+'px';holdring.style.top=y+'px';
+  holdring.style.display='block'; holdring.style.left=x+'px'; holdring.style.top=y+'px';
   holdArc.style.strokeDashoffset=(150.8*(1-pct))+'';
 }
-function hideRing(){holdring.style.display='none';}
+function hideRing(){ holdring.style.display='none'; }
 
-// ── MediaPipe Hands ────────────────────────────────────────────────────
+// ── MediaPipe — использует ТУ ЖЕ камеру что уже запущена ─────────────────
 var hands;
 function initHands(){
   hands=new Hands({locateFile:function(f){
@@ -616,17 +562,16 @@ function initHands(){
       var g=getGest(lms);
       drawHand(lms,g);
       var tip=pt(lms,8);
-      cursor.style.display='block';
-      cursor.style.left=tip.x+'px';
-      cursor.style.top=tip.y+'px';
+      cursor.style.display='block'; cursor.style.left=tip.x+'px'; cursor.style.top=tip.y+'px';
       cursor.className=g==='PINCH'?'pinch':'';
       updateDwell(tip.x,tip.y);
       tryHold(g,tip.x,tip.y);
-      dot.className='on';stxt.textContent=g;
+      dot.className='on'; stxt.textContent=g;
     } else {
-      cursor.style.display='none';hideRing();hb.style.display='none';
-      dot.className='';stxt.textContent='НЕТ РУКИ';holdG='';
-      if(dwellTarget){dwellTarget.querySelector('.fl-dwell').style.width='0%';dwellTarget=null;}
+      ctx.clearRect(0,0,cv.width,cv.height);
+      cursor.style.display='none'; hideRing(); hb.style.display='none';
+      dot.className=''; stxt.textContent='НЕТ РУКИ'; holdG='';
+      if(dwellTarget){ dwellTarget.querySelector('.fl-dwell').style.width='0%'; dwellTarget=null; }
     }
   });
 }
@@ -635,49 +580,51 @@ function startHandLoop(){
   var lastT=0;
   function frame(ts){
     requestAnimationFrame(frame);
-    if(mpVideo.readyState<2||mpVideo.paused)return;
-    if(ts-lastT<50)return; // 20fps
+    if(vid.readyState<2||vid.paused) return;
+    if(ts-lastT<50) return; // 20 fps
     lastT=ts;
-    hands.send({image:mpVideo}).catch(function(){});
+    hands.send({image:vid}).catch(function(){});
   }
   requestAnimationFrame(frame);
 }
 
-// ── Boot ───────────────────────────────────────────────────────────────
+// ── Boot — ОДНА камера, всё через неё ────────────────────────────────────
 (async function(){
   try{
-    setLoad(15,'Загрузка A-Frame…');
-    // Ждём готовности A-Frame сцены
-    var aScene=document.getElementById('arscene');
-    if(!aScene.hasLoaded){
-      await new Promise(function(r){aScene.addEventListener('loaded',r,{once:true});});
-    }
+    setLoad(10, 'Инициализация Three.js…');
     initThree();
+    resize();
 
-    setLoad(40,'Инициализация MediaPipe…');
+    setLoad(30, 'Загрузка MediaPipe…');
     initHands();
-    setLoad(65,'Загрузка модели рук…');
+
+    setLoad(55, 'Загрузка модели рук…');
     await hands.initialize();
 
-    setLoad(82,'Включение камеры…');
-    await startRearCamera();
+    // Камера запрашивается ОДИН РАЗ — задняя
+    setLoad(80, 'Включение камеры…');
+    var stream = null;
+    var camOpts=[
+      {video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false},
+      {video:{facingMode:'environment'},audio:false},
+      {video:true,audio:false}
+    ];
+    for(var i=0;i<camOpts.length;i++){
+      try{ stream=await navigator.mediaDevices.getUserMedia(camOpts[i]); break; }
+      catch(e){ if(i===camOpts.length-1) throw new Error('Камера недоступна'); }
+    }
 
-    // Подключаем заднюю камеру к фону A-Frame сцены
-    // A-Frame рендерит сцену без фона, за ним — CSS background: #000
-    // Мы добавим video элемент как фон
-    mpVideo.style.cssText='position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;';
-    document.body.appendChild(mpVideo);
-    // Убираем фон сцены чтобы видео было видно
-    aScene.style.background='transparent';
-    aScene.renderer.setClearAlpha(0);
-    aScene.renderer.setClearColor(0x000000,0);
+    // Один поток — подключаем к <video> для фона
+    vid.srcObject=stream;
+    await new Promise(function(r){ vid.onloadedmetadata=function(){ vid.play().then(r); }; });
 
-    setLoad(100,'Готово!');
+    setLoad(100, 'Готово!');
     setTimeout(function(){
       loader.style.display='none';
-      startHandLoop();
-      setTimeout(showFilePick,500);
-    },300);
+      startHandLoop(); // MediaPipe читает кадры из <video>
+      setTimeout(showFilePick, 400);
+    }, 300);
+
   }catch(err){
     setLoad(0,'Ошибка: '+err.message);
     lmEl.style.color='#ff6666';
